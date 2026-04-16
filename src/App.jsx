@@ -1,4 +1,17 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+
+// ===== STORAGE HELPERS =====
+const NS = "nekoTyping_v1_";
+const STORAGE_KEYS = ["level","xp","totalXp","collection","correct","miss"];
+const saveToStorage = (key, value) => {
+  try { localStorage.setItem(NS + key, JSON.stringify(value)); } catch {}
+};
+const loadFromStorage = (key, defaultValue) => {
+  try {
+    const v = localStorage.getItem(NS + key);
+    return v === null ? defaultValue : JSON.parse(v);
+  } catch { return defaultValue; }
+};
 
 // ===== 100 CATS =====
 const CATS = [
@@ -327,28 +340,42 @@ function GachaModal({ cat, isNew, onClose }) {
 // ===== MAIN =====
 export default function NekoTyping() {
   const [screen,setScreen]=useState("title");
-  const [level,setLevel]=useState(1);
-  const [xp,setXp]=useState(0);
-  const [totalXp,setTotalXp]=useState(0);
-  const [collection,setCollection]=useState([]);
+  const [level,setLevel]=useState(()=>loadFromStorage("level",1));
+  const [xp,setXp]=useState(()=>loadFromStorage("xp",0));
+  const [totalXp,setTotalXp]=useState(()=>loadFromStorage("totalXp",0));
+  const [collection,setCollection]=useState(()=>loadFromStorage("collection",[]));
   const [word,setWord]=useState("");
   const [typed,setTyped]=useState("");
   const [combo,setCombo]=useState(0);
-  const [correct,setCorrect]=useState(0);
-  const [miss,setMiss]=useState(0);
+  const [correct,setCorrect]=useState(()=>loadFromStorage("correct",0));
+  const [miss,setMiss]=useState(()=>loadFromStorage("miss",0));
   const [shakeKey,setShakeKey]=useState(null);
   const [sparkle,setSparkle]=useState(false);
   const [gachaCat,setGachaCat]=useState(null);
   const [gachaNew,setGachaNew]=useState(false);
   const [msg,setMsg]=useState("");
-  const ref=useRef(null);
+
+  useEffect(()=>saveToStorage("level",level),[level]);
+  useEffect(()=>saveToStorage("xp",xp),[xp]);
+  useEffect(()=>saveToStorage("totalXp",totalXp),[totalXp]);
+  useEffect(()=>saveToStorage("collection",collection),[collection]);
+  useEffect(()=>saveToStorage("correct",correct),[correct]);
+  useEffect(()=>saveToStorage("miss",miss),[miss]);
+
+  const resetData=()=>{
+    if(!confirm("ほんとうにリセットしますか？\nあつめたねこがぜんぶきえてしまいます！"))return;
+    try{STORAGE_KEYS.forEach(k=>localStorage.removeItem(NS+k));}catch{}
+    setLevel(1);setXp(0);setTotalXp(0);setCollection([]);setCorrect(0);setMiss(0);setCombo(0);
+  };
 
   const nextWord=useCallback(()=>{const w=WORDS[level].words;return w[Math.floor(Math.random()*w.length)];},[level]);
   useEffect(()=>{if(screen==="game"&&!word){setWord(nextWord());setTyped("");}},[screen,word,nextWord]);
-  useEffect(()=>{if(screen==="game"&&ref.current)ref.current.focus();},[screen,word]);
 
   const onKey=useCallback((e)=>{
-    if(screen!=="game"||gachaCat)return;
+    if(gachaCat)return;
+    if(screen==="game"&&e.key==="Escape"){e.preventDefault();setScreen("title");return;}
+    if(screen!=="game")return;
+    if(e.key===" "){e.preventDefault();setCombo(0);setWord(nextWord());setTyped("");return;}
     const k=e.key.toLowerCase();
     if(k.length!==1||e.ctrlKey||e.metaKey||e.altKey)return;
     e.preventDefault();
@@ -432,6 +459,9 @@ export default function NekoTyping() {
               🏠 おうちをみる</button>
           </div>
           <div style={{marginTop:10,fontSize:12,color:"#636e72"}}>🏆 そうXP: {totalXp}　|　💰 {xp} XP</div>
+          <button onClick={resetData} style={{marginTop:18,padding:"6px 16px",fontSize:11,fontWeight:700,
+            background:"rgba(255,255,255,0.5)",color:"#b2bec3",border:"1px solid #dfe6e9",borderRadius:20,
+            cursor:"pointer",fontFamily:"inherit"}}>🗑️ データをリセット</button>
         </div>
       )}
 
@@ -486,7 +516,6 @@ export default function NekoTyping() {
             {collection.slice(-6).map(cat=><div key={cat.id} style={{animation:"float 3s ease-in-out infinite",animationDelay:`${cat.id*0.2}s`}}><CatFace cat={cat} size={28}/></div>)}
             {collection.length>6&&<div style={{fontSize:10,color:"#636e72",display:"flex",alignItems:"center"}}>+{collection.length-6}</div>}
           </div>}
-          <input ref={ref} style={{position:"absolute",opacity:0,pointerEvents:"none"}} autoFocus/>
         </div>
       )}
 
