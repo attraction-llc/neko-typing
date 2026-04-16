@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 // ===== STORAGE HELPERS =====
 const NS = "nekoTyping_v1_";
@@ -124,7 +124,7 @@ const CATS = [
   { id:98, name:"つきのねこ", r:"★★★★★", c:"#e0dcd0", d:"まんげつのよにあらわれる", ec:"#4a90d9", p:"solid", s:"moon" },
   { id:99, name:"でんせつのけんしねこ", r:"★★★★★", c:"#4060c0", d:"つるぎをもつでんせつのねこ", ec:"#ffd93d", p:"solid", s:"knight" },
   { id:100, name:"ねこがみさま", r:"★★★★★", c:"#f0e8d0", d:"すべてのねこのかみさま", ec:"#ffd93d", p:"solid", s:"god" },
-];
+].map(c => ({ ...c, img: `${import.meta.env.BASE_URL}cats/${c.id.toString().padStart(3, "0")}.png` }));
 
 const WORDS = {
   1: { label:"かんたん（1もじ）", words:"asdfjklghtyrueiwoqpbnmcxzv".split("") },
@@ -143,131 +143,210 @@ const HOUSES = [
 ];
 function getHouse(n){ let h=HOUSES[0]; for(const x of HOUSES){if(n>=x.need)h=x;} return h; }
 
-// ===== CAT FACE SVG =====
+// ===== CAT FACE (image-based) =====
 function CatFace({ cat, size=64 }) {
-  const isG=cat.c==="rainbow"||cat.c==="cosmic";
-  const bc=isG?"#ddd":cat.c;
-  const gid=`g${cat.id}s${size}`;
-  const ey=cat.ec||"#333";
-  const lt=!isG&&["#f5f5f5","#f0f0f0","#e8dcc8","#f0e6d2","#e8ddd0","#f8f0e0","#f0d5a8","#f5e0d0","#f8f4f0","#f0e0d0","#e0eef8","#f0f0ff","#c0ddf0","#f8f0e8","#e0dcd0","#f0e8d0","#e0d0b8","#e8d8c0","#e8d8c8","#f0e6d8","#f5f0e0","#f0d8c0","#ffb7c5","#e0eef8","#87ceeb"].includes(cat.c);
-  const ei=lt?"#ffb6c1":"#e88";
-  return(
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{filter:"drop-shadow(0 2px 3px rgba(0,0,0,0.12))"}}>
-      <defs>
-        {cat.c==="rainbow"&&<linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ff6b6b"/><stop offset="25%" stopColor="#ffd93d"/><stop offset="50%" stopColor="#6bcb77"/><stop offset="75%" stopColor="#4d96ff"/><stop offset="100%" stopColor="#9b59b6"/>
-        </linearGradient>}
-        {cat.c==="cosmic"&&<linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0c0032"/><stop offset="50%" stopColor="#4a0080"/><stop offset="100%" stopColor="#7209b7"/>
-        </linearGradient>}
-      </defs>
-      {cat.t==="fluffy"&&<><circle cx="22" cy="54" r="5" fill={isG?`url(#${gid})`:bc} opacity="0.4"/><circle cx="78" cy="54" r="5" fill={isG?`url(#${gid})`:bc} opacity="0.4"/><circle cx="50" cy="82" r="4" fill={isG?`url(#${gid})`:bc} opacity="0.4"/></>}
-      {/* Ears */}
-      {cat.t==="fold"?<><polygon points="20,42 28,18 38,36" fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/><polygon points="62,36 72,18 80,42" fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/></>
-      :cat.t==="bigear"?<><polygon points="12,42 22,0 44,30" fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/><polygon points="56,30 78,0 88,42" fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/><polygon points="18,38 24,8 38,28" fill={ei}/><polygon points="62,28 76,8 82,38" fill={ei}/></>
-      :<><polygon points="18,38 28,8 42,32" fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/><polygon points="58,32 72,8 82,38" fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/><polygon points="24,34 30,16 38,32" fill={ei}/><polygon points="62,32 70,16 76,34" fill={ei}/></>}
-      {/* Head */}
-      <ellipse cx="50" cy="55" rx={cat.t==="round"||cat.t==="chubby"?37:34} ry={cat.t==="round"||cat.t==="chubby"?33:30} fill={isG?`url(#${gid})`:bc} stroke="#555" strokeWidth="1.5"/>
-      {/* Patterns */}
-      {cat.p==="tabby"&&<><path d="M33,40 Q40,37 47,40" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="2"/><path d="M53,40 Q60,37 67,40" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="2"/></>}
-      {cat.p==="stripes"&&<><line x1="30" y1="42" x2="34" y2="62" stroke="rgba(0,0,0,0.12)" strokeWidth="2"/><line x1="66" y1="42" x2="62" y2="62" stroke="rgba(0,0,0,0.12)" strokeWidth="2"/></>}
-      {cat.p==="spots"&&<><circle cx="35" cy="62" r="4" fill="rgba(0,0,0,0.15)"/><circle cx="60" cy="45" r="3" fill="rgba(0,0,0,0.15)"/><circle cx="55" cy="65" r="3.5" fill="rgba(0,0,0,0.15)"/></>}
-      {cat.p==="leopard"&&<><circle cx="32" cy="55" r="3" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.2"/><circle cx="55" cy="65" r="2.5" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.2"/><circle cx="65" cy="48" r="2.8" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.2"/></>}
-      {cat.p==="pointed"&&<ellipse cx="50" cy="70" rx="18" ry="10" fill="rgba(100,70,50,0.25)"/>}
-      {cat.p==="calico"&&<><circle cx="62" cy="48" r="8" fill="rgba(210,100,50,0.25)"/><circle cx="38" cy="65" r="7" fill="rgba(40,40,40,0.15)"/></>}
-      {cat.p==="bicolor"&&<path d="M50,25 L50,85 Q65,85 75,65 Q84,45 70,30 Z" fill="rgba(255,255,255,0.35)"/>}
-      {cat.p==="panda"&&<><circle cx="38" cy="50" r="8" fill="rgba(0,0,0,0.2)"/><circle cx="62" cy="50" r="8" fill="rgba(0,0,0,0.2)"/></>}
-      {cat.p==="tiger"&&<><path d="M30,42 L35,55" stroke="rgba(0,0,0,0.25)" strokeWidth="2.5"/><path d="M65,42 L60,55" stroke="rgba(0,0,0,0.25)" strokeWidth="2.5"/></>}
-      {cat.p==="van"&&<><circle cx="35" cy="35" r="7" fill="rgba(210,100,50,0.3)"/><circle cx="65" cy="35" r="6" fill="rgba(210,100,50,0.3)"/></>}
-      {cat.p==="ticked"&&<><circle cx="35" cy="50" r="1.5" fill="rgba(0,0,0,0.1)"/><circle cx="45" cy="58" r="1.5" fill="rgba(0,0,0,0.1)"/><circle cx="55" cy="52" r="1.5" fill="rgba(0,0,0,0.1)"/><circle cx="65" cy="60" r="1.5" fill="rgba(0,0,0,0.1)"/></>}
-      {cat.p==="tortie"&&<><circle cx="36" cy="48" r="6" fill="rgba(200,80,30,0.2)"/><circle cx="60" cy="60" r="5" fill="rgba(30,30,30,0.15)"/></>}
-      {cat.p==="nosespot"&&<circle cx="50" cy="58" r="4" fill="rgba(60,40,30,0.25)"/>}
-      {cat.p==="fspot"&&<circle cx="50" cy="36" r="5" fill="rgba(60,40,30,0.2)"/>}
-      {cat.p==="gspots"&&<><circle cx="38" cy="60" r="4" fill="rgba(100,100,100,0.2)"/><circle cx="62" cy="55" r="3.5" fill="rgba(100,100,100,0.2)"/></>}
-      {cat.p==="socks"&&<><rect x="30" y="75" width="12" height="8" fill="rgba(255,255,255,0.4)" rx="3"/><rect x="58" y="75" width="12" height="8" fill="rgba(255,255,255,0.4)" rx="3"/></>}
-      {/* Eyes */}
-      {cat.t==="sleepy"?<><path d="M33,50 Q38,47 43,50" fill="none" stroke={ey} strokeWidth="1.5" strokeLinecap="round"/><path d="M57,50 Q62,47 67,50" fill="none" stroke={ey} strokeWidth="1.5" strokeLinecap="round"/></>
-      :cat.t==="smug"?<><path d="M33,50 Q38,46 43,50" fill="none" stroke={ey} strokeWidth="1.5" strokeLinecap="round"/><path d="M57,50 Q62,46 67,50" fill="none" stroke={ey} strokeWidth="1.5" strokeLinecap="round"/></>
-      :cat.t==="bigeye"?<><ellipse cx="38" cy="50" rx="7" ry="8" fill="white"/><ellipse cx="62" cy="50" rx="7" ry="8" fill="white"/><ellipse cx="39" cy="50" rx="4" ry="5" fill={ey}/><ellipse cx="63" cy="50" rx="4" ry="5" fill={ey}/><ellipse cx="40" cy="48" rx="1.5" ry="2" fill="white"/><ellipse cx="64" cy="48" rx="1.5" ry="2" fill="white"/></>
-      :<><ellipse cx="38" cy="50" rx="5" ry="6" fill="white"/><ellipse cx="62" cy="50" rx="5" ry="6" fill="white"/><ellipse cx="39" cy="50" rx="3" ry="4" fill={ey}/><ellipse cx="63" cy="50" rx="3" ry="4" fill={ey}/><ellipse cx="39.5" cy="49" rx="1" ry="1.5" fill="white"/><ellipse cx="63.5" cy="49" rx="1" ry="1.5" fill="white"/></>}
-      {/* Nose & Mouth */}
-      <polygon points="50,58 47,62 53,62" fill="#ffb6c1"/>
-      {cat.t==="smug"?<path d="M44,64 Q50,68 56,64" fill="none" stroke="#555" strokeWidth="1"/>:<><path d="M47,63 Q50,67 50,63" fill="none" stroke="#555" strokeWidth="1"/><path d="M50,63 Q50,67 53,63" fill="none" stroke="#555" strokeWidth="1"/></>}
-      {/* Whiskers */}
-      <line x1="14" y1="56" x2="33" y2="58" stroke="#888" strokeWidth="1"/><line x1="14" y1="62" x2="33" y2="62" stroke="#888" strokeWidth="1"/>
-      <line x1="67" y1="58" x2="86" y2="56" stroke="#888" strokeWidth="1"/><line x1="67" y1="62" x2="86" y2="62" stroke="#888" strokeWidth="1"/>
-      {/* Special effects */}
-      {cat.s==="sakura"&&<><text x="18" y="20" fontSize="10" opacity="0.7">🌸</text><text x="70" y="25" fontSize="8" opacity="0.5">🌸</text></>}
-      {cat.s==="fire"&&<><text x="15" y="22" fontSize="10" opacity="0.7">🔥</text><text x="72" y="18" fontSize="8" opacity="0.6">🔥</text></>}
-      {cat.s==="snow"&&<><text x="18" y="20" fontSize="8" opacity="0.6">❄️</text><text x="72" y="22" fontSize="7" opacity="0.5">❄️</text></>}
-      {cat.s==="star"&&<><text x="16" y="20" fontSize="9" opacity="0.7">⭐</text><text x="74" y="22" fontSize="7" opacity="0.6">⭐</text></>}
-      {cat.s==="gold"&&<><text x="18" y="18" fontSize="8" opacity="0.6">✨</text><text x="72" y="20" fontSize="7" opacity="0.5">✨</text></>}
-      {cat.s==="rainbow"&&<><circle cx="24" cy="18" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/></circle><circle cx="78" cy="22" r="1.5" fill="#ff6b6b" opacity="0.6"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="1.5s" repeatCount="indefinite"/></circle></>}
-      {cat.s==="cosmic"&&<><circle cx="22" cy="18" r="1.5" fill="#fff" opacity="0.7"><animate attributeName="opacity" values="0.2;1;0.2" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="80" cy="22" r="1" fill="#c77dff" opacity="0.6"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.2s" repeatCount="indefinite"/></circle></>}
-      {cat.s==="king"&&<text x="38" y="16" fontSize="14">👑</text>}
-      {cat.s==="angel"&&<><ellipse cx="30" cy="30" rx="10" ry="4" fill="rgba(255,255,255,0.5)" transform="rotate(-30,30,30)"/><ellipse cx="70" cy="30" rx="10" ry="4" fill="rgba(255,255,255,0.5)" transform="rotate(30,70,30)"/></>}
-      {cat.s==="demon"&&<><polygon points="22,22 26,6 30,20" fill="#a040a0"/><polygon points="70,20 74,6 78,22" fill="#a040a0"/></>}
-      {cat.s==="wizard"&&<text x="35" y="12" fontSize="16">🎩</text>}
-      {cat.s==="ninja"&&<rect x="28" y="46" width="44" height="8" fill="rgba(40,40,40,0.6)" rx="3"/>}
-      {cat.s==="knight"&&<text x="70" y="70" fontSize="12">⚔️</text>}
-      {cat.s==="dragon"&&<><polygon points="20,28 16,8 26,22" fill="#2d8040"/><polygon points="74,22 84,8 80,28" fill="#2d8040"/></>}
-      {cat.s==="cherry"&&<text x="40" y="12" fontSize="14">🍒</text>}
-      {cat.s==="ocean"&&<><text x="14" y="78" fontSize="8" opacity="0.5">🌊</text><text x="70" y="80" fontSize="7" opacity="0.4">🌊</text></>}
-      {cat.s==="sun"&&<circle cx="50" cy="10" r="8" fill="#ffd93d" opacity="0.3"><animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite"/></circle>}
-      {cat.s==="moon"&&<text x="68" y="18" fontSize="12" opacity="0.5">🌙</text>}
-      {cat.s==="god"&&<><circle cx="50" cy="12" r="10" fill="none" stroke="#ffd93d" strokeWidth="1.5" opacity="0.5"><animate attributeName="opacity" values="0.3;0.7;0.3" dur="2s" repeatCount="indefinite"/></circle><text x="43" y="8" fontSize="8">✨</text></>}
-      {cat.s==="crystal"&&<polygon points="50,10 45,22 55,22" fill="rgba(200,230,255,0.5)" stroke="rgba(150,200,255,0.4)" strokeWidth="0.5"/>}
-      {(cat.s==="sky"||cat.s==="aurora"||cat.s==="water"||cat.s==="forest"||cat.s==="silver"||cat.s==="sunset")&&<circle cx="22" cy="16" r="1.5" fill="#adf" opacity="0.5"><animate attributeName="opacity" values="0.2;0.7;0.2" dur="2s" repeatCount="indefinite"/></circle>}
-    </svg>
+  const [err, setErr] = useState(false);
+  useEffect(() => { setErr(false); }, [cat.img]);
+  if (err) {
+    return (
+      <div style={{ width:size, height:size, display:"flex", alignItems:"center", justifyContent:"center",
+        fontSize:size*0.7, lineHeight:1, filter:"drop-shadow(0 2px 3px rgba(0,0,0,0.12))" }}>🐱</div>
+    );
+  }
+  return (
+    <img
+      src={cat.img}
+      alt={cat.name}
+      width={size}
+      height={size}
+      onError={() => setErr(true)}
+      style={{ objectFit:"contain", filter:"drop-shadow(0 2px 3px rgba(0,0,0,0.12))" }}
+    />
   );
 }
 
-// ===== MINI CAT for house =====
-function MiniCat({ cat, x, y, action, tick }) {
-  const bc=cat.c==="rainbow"?"#e88":cat.c==="cosmic"?"#60a":cat.c;
-  const ey=cat.ec||"#333";
-  const sl=action==="sleep", pl=action==="play";
-  const b=pl?Math.sin(tick*0.15)*4:0;
-  const sw=!sl&&!pl?Math.sin(tick*0.05+cat.id)*2:0;
-  return(
-    <g transform={`translate(${x+sw},${y+b})`}>
-      <ellipse cx="0" cy="6" rx="10" ry="7" fill={bc} stroke="#555" strokeWidth="0.8"/>
-      <circle cx="0" cy="-4" r="7" fill={bc} stroke="#555" strokeWidth="0.8"/>
-      <polygon points="-6,-9 -4,-16 -1,-8" fill={bc} stroke="#555" strokeWidth="0.6"/>
-      <polygon points="1,-8 4,-16 6,-9" fill={bc} stroke="#555" strokeWidth="0.6"/>
-      <polygon points="-5,-10 -3.5,-14 -1.5,-9" fill="#e88"/>
-      <polygon points="1.5,-9 3.5,-14 5,-10" fill="#e88"/>
-      {sl?<><line x1="-4" y1="-5" x2="-1" y2="-5" stroke={ey} strokeWidth="1" strokeLinecap="round"/><line x1="1" y1="-5" x2="4" y2="-5" stroke={ey} strokeWidth="1" strokeLinecap="round"/></>
-      :<><circle cx="-3" cy="-5" r="1.8" fill="white"/><circle cx="3" cy="-5" r="1.8" fill="white"/><circle cx="-2.5" cy="-5" r="1" fill={ey}/><circle cx="3.5" cy="-5" r="1" fill={ey}/></>}
-      <polygon points="0,-2 -1,-0.5 1,-0.5" fill="#ffb6c1"/>
-      <path d={`M8,5 Q14,${sl?8:-2+Math.sin(tick*0.1+cat.id)*3} 12,${sl?10:-4}`} fill="none" stroke={bc} strokeWidth="2.5" strokeLinecap="round"/>
-      {sl&&<text x="6" y="-12" fontSize="6" fill="#88a" opacity={0.5+Math.sin(tick*0.1)*0.5} fontWeight="bold">z</text>}
-      {pl&&tick%20<10&&<text x="-2" y="-18" fontSize="5" fill="#ffd93d">✦</text>}
-      {cat.s==="king"&&<text x="-4" y="-18" fontSize="7">👑</text>}
-      {cat.s==="wizard"&&<text x="-4" y="-18" fontSize="7">🎩</text>}
-      {cat.s==="god"&&<text x="-4" y="-20" fontSize="7">✨</text>}
+// ===== HOUSE CONSTANTS =====
+const ACTIONS = ["idle","sleep","play","walk","groom","chase","sit","stretch"];
+const EMOTIONS = ["💕","😴","✨","🐟","❓","🎵"];
+const MEOWS = ["にゃー！","にゃ〜ん","みゃお","ごろごろ","ぷるる"];
+const FLOOR_TOP = 138, FLOOR_BOT = 188, X_MIN = 18, X_MAX = 282;
+const pickAction = () => ACTIONS[Math.floor(Math.random()*ACTIONS.length)];
+const pickEmotion = () => EMOTIONS[Math.floor(Math.random()*EMOTIONS.length)];
+const pickMeow = () => MEOWS[Math.floor(Math.random()*MEOWS.length)];
+const getTimeMode = (d=new Date()) => { const h=d.getHours(); return h>=6&&h<17?"day":h<19?"sunset":"night"; };
+
+// ===== MINI CAT (image-based, rich animation) =====
+function MiniCat({ state, tick, onClick }) {
+  const { cat, x, y, action, facing, emotion, speech, hearts, jumpUntil } = state;
+  const sleeping=action==="sleep", playing=action==="play", walking=action==="walk",
+        chasing=action==="chase", grooming=action==="groom",
+        sitting=action==="sit", stretching=action==="stretch";
+  const jumping = tick < jumpUntil;
+  const jumpProgress = jumping ? (5-(jumpUntil-tick))/5 : 0;
+  const bounce = playing ? -Math.abs(Math.sin(tick*0.28))*5
+                : jumping ? -Math.sin(jumpProgress*Math.PI)*12 : 0;
+  const sway = action==="idle" ? Math.sin(tick*0.05+cat.id)*2
+             : grooming ? Math.sin(tick*0.5+cat.id)*1.5 : 0;
+  const walkBob = (walking||chasing) ? Math.sin(tick*0.35+cat.id)*0.8 : 0;
+  const rot = sleeping ? 15
+            : grooming ? Math.sin(tick*0.3)*8
+            : chasing ? facing*5
+            : 0;
+  const sy = stretching ? 1+Math.sin(tick*0.18)*0.22 : 1;
+  const sx = facing * (stretching ? 0.92 : 1);
+  const cx = x + sway, cy = y + bounce + walkBob;
+  const speechAge = speech ? tick - speech.spawnedAt : 0;
+  const speechFade = speech ? (speechAge<2 ? speechAge/2 : speechAge>10 ? Math.max(0,(12-speechAge)/2) : 1) : 0;
+  const emoAge = emotion ? tick - emotion.spawnedAt : 0;
+  const emoFade = emotion ? (emoAge<3 ? emoAge/3 : emoAge>12 ? Math.max(0,(15-emoAge)/3) : 1) : 0;
+
+  return (
+    <g transform={`translate(${cx},${cy})`} style={{cursor:"pointer"}}
+       onPointerDown={e => { e.stopPropagation(); onClick(); }}>
+      <title>{cat.name}（{cat.r}）</title>
+      <image href={cat.img} width="30" height="30" x="-15" y="-15"
+        transform={`scale(${sx},${sy}) rotate(${rot})`}
+        style={{pointerEvents:"auto"}}/>
+      {sleeping && <text x="6" y="-12" fontSize="6" fill="#88a"
+        opacity={0.5+Math.sin(tick*0.1)*0.5} fontWeight="bold">z</text>}
+      {playing && tick%20<10 && <text x="-2" y="-18" fontSize="5" fill="#ffd93d">✦</text>}
+      {sitting && tick%30<18 && <text x="-4" y="-16" fontSize="6" fill="#e17055">♪</text>}
+      {stretching && tick%24<12 && <text x="-3" y="-18" fontSize="5" fill="#6bcb77" opacity="0.7">↕</text>}
+      {grooming && tick%22<11 && <text x="-3" y="-16" fontSize="5" fill="#87ceeb" opacity="0.7">〜</text>}
+      {chasing && tick%8<4 && <text x={-facing*10} y="-2" fontSize="5" fill="#e17055" opacity="0.6">💨</text>}
+
+      {emotion && <text x="-5" y={-20 - Math.min(emoAge,10)*0.8} fontSize="10" opacity={emoFade}>{emotion.icon}</text>}
+
+      {speech && (() => {
+        const w = Math.max(speech.text.length*5, cat.name.length*4.5+12) + 6;
+        return (
+          <g opacity={speechFade}>
+            <rect x={-w/2} y="-40" width={w} height="18" fill="#fff" stroke="#e17055" strokeWidth="0.6" rx="5"/>
+            <polygon points={`${-3},-22 0,-19 3,-22`} fill="#fff" stroke="#e17055" strokeWidth="0.6"/>
+            <text x="0" y="-32" fontSize="6" fill="#e17055" textAnchor="middle" fontWeight="bold">{speech.text}</text>
+            <text x="0" y="-25" fontSize="4" fill="#636e72" textAnchor="middle">{cat.name} {cat.r}</text>
+          </g>
+        );
+      })()}
+
+      {hearts.map(h => {
+        const age = tick - h.spawnedAt;
+        const life = h.until - h.spawnedAt;
+        const p = age / life;
+        return <text key={h.id} x={h.dx} y={h.dy - age*1.6} fontSize="8" opacity={Math.max(0,1-p)}>💕</text>;
+      })}
     </g>
   );
 }
 
 // ===== HOUSE VIEW =====
 function HouseView({ collection, onBack }) {
-  const [tick, setTick] = useState(0);
+  const [, forceRender] = useState(0);
+  const tickRef = useRef(0);
+  const catsRef = useRef([]);
+  const [timeMode, setTimeMode] = useState(getTimeMode());
   const house = getHouse(collection.length);
   const nextH = HOUSES.find(h => h.need > collection.length);
-  useEffect(() => { const iv=setInterval(()=>setTick(t=>t+1),100); return()=>clearInterval(iv); }, []);
-  const positions = useMemo(() => collection.map((cat) => {
-    const s=cat.id*7+13;
-    return { cat, x:30+(s*37%240), y:80+(s*53%100), action:["idle","idle","idle","sleep","play"][(s*11)%5] };
-  }), [collection]);
+
+  useEffect(() => {
+    catsRef.current = collection.map(cat => {
+      const s = cat.id*7+13;
+      return {
+        cat,
+        x: X_MIN + 10 + (s*37 % (X_MAX-X_MIN-20)),
+        y: FLOOR_TOP + (s*53 % (FLOOR_BOT-FLOOR_TOP)),
+        vx: 0, vy: 0,
+        facing: s%2===0 ? 1 : -1,
+        action: "idle",
+        nextChangeAt: Math.floor(Math.random()*80),
+        emotion: null,
+        speech: null,
+        hearts: [],
+        jumpUntil: 0,
+        clickCount: 0,
+        lastClickAt: -9999,
+      };
+    });
+  }, [collection]);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const t = ++tickRef.current;
+      for (const c of catsRef.current) {
+        if (t >= c.nextChangeAt) {
+          c.action = pickAction();
+          c.nextChangeAt = t + 50 + Math.floor(Math.random()*100);
+          if (c.action === "walk") {
+            c.vx = (Math.random()<0.5?-1:1) * 0.8;
+            c.vy = 0;
+            c.facing = c.vx > 0 ? 1 : -1;
+          } else if (c.action === "chase") {
+            const ang = Math.random()*Math.PI*2;
+            c.vx = Math.cos(ang)*2.4;
+            c.vy = Math.sin(ang)*1.1;
+            c.facing = c.vx >= 0 ? 1 : -1;
+          } else {
+            c.vx = 0; c.vy = 0;
+          }
+        }
+        if (c.action === "walk" || c.action === "chase") {
+          c.x += c.vx; c.y += c.vy;
+          if (c.x < X_MIN) { c.x = X_MIN; c.vx = -c.vx; c.facing = c.vx>=0?1:-1; }
+          if (c.x > X_MAX) { c.x = X_MAX; c.vx = -c.vx; c.facing = c.vx>=0?1:-1; }
+          if (c.y < FLOOR_TOP) { c.y = FLOOR_TOP; c.vy = -c.vy; }
+          if (c.y > FLOOR_BOT) { c.y = FLOOR_BOT; c.vy = -c.vy; }
+        }
+        if (!c.emotion && Math.random() < 0.004) {
+          c.emotion = { icon: pickEmotion(), spawnedAt: t };
+        }
+        if (c.emotion && t - c.emotion.spawnedAt > 15) c.emotion = null;
+        if (c.speech && t - c.speech.spawnedAt > 12) c.speech = null;
+        if (c.hearts.length) c.hearts = c.hearts.filter(h => t < h.until);
+        if (c.clickCount > 0 && t - c.lastClickAt > 25) c.clickCount = 0;
+      }
+      forceRender(t);
+    }, 100);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    const iv = setInterval(() => setTimeMode(getTimeMode()), 60000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const handleCatClick = (c) => {
+    const t = tickRef.current;
+    c.clickCount += 1;
+    c.lastClickAt = t;
+    c.jumpUntil = t + 5;
+    c.speech = { text: pickMeow(), spawnedAt: t };
+    if (c.clickCount >= 3) {
+      for (let i = 0; i < 5; i++) {
+        c.hearts.push({
+          id: `${t}_${i}_${Math.random()}`,
+          dx: (Math.random()-0.5)*28,
+          dy: -18,
+          spawnedAt: t,
+          until: t + 16,
+        });
+      }
+    }
+    forceRender(n => n + 1);
+  };
+
+  const skyFill = timeMode==="day" ? "#87ceeb"
+                : timeMode==="sunset" ? "linear-gradient(180deg,#ff9a7b,#ffcc88)"
+                : "#1a1a3a";
+
   return(
-    <div style={{ minHeight:"100vh", background:`linear-gradient(180deg,#87ceeb 0%,#b0d8f0 40%,${house.bg} 40%)`,
-      fontFamily:"'Zen Maru Gothic',sans-serif", animation:"fadeIn 0.4s ease" }}>
+    <div style={{ minHeight:"100vh",
+      background:`linear-gradient(180deg,${timeMode==="day"?"#87ceeb":timeMode==="sunset"?"#ffa07a":"#1a1a3a"} 0%,${timeMode==="day"?"#b0d8f0":timeMode==="sunset"?"#ffc89a":"#2a2a5a"} 40%,${house.bg} 40%)`,
+      fontFamily:"'Zen Maru Gothic',sans-serif", animation:"fadeIn 0.4s ease", transition:"background 2s ease" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px" }}>
         <button onClick={onBack} style={{ padding:"6px 16px", fontSize:12, background:"rgba(255,255,255,0.8)",
           border:"none", borderRadius:20, cursor:"pointer", fontFamily:"inherit", fontWeight:700, color:"#636e72" }}>← もどる</button>
-        <div style={{ fontSize:16, fontWeight:900, color:"#2d3436" }}>🏠 {house.name}</div>
-        <div style={{ fontSize:11, color:"#636e72" }}>{collection.length}ひき</div>
+        <div style={{ fontSize:16, fontWeight:900, color:timeMode==="night"?"#fff":"#2d3436" }}>🏠 {house.name}</div>
+        <div style={{ fontSize:11, color:timeMode==="night"?"#dfe6e9":"#636e72" }}>{collection.length}ひき</div>
       </div>
       {nextH&&<div style={{ textAlign:"center", fontSize:11, color:"#636e72", marginBottom:8,
         background:"rgba(255,255,255,0.6)", padding:"4px 12px", borderRadius:12,
@@ -275,7 +354,18 @@ function HouseView({ collection, onBack }) {
         あと{nextH.need-collection.length}ひきで「{nextH.name}」にグレードアップ！</div>}
       <div style={{ width:"100%", maxWidth:480, margin:"0 auto", padding:"0 8px" }}>
         <svg viewBox="0 0 300 200" style={{ width:"100%", borderRadius:16, background:house.bg,
-          boxShadow:"0 4px 20px rgba(0,0,0,0.15)" }}>
+          boxShadow:"0 4px 20px rgba(0,0,0,0.15)", touchAction:"manipulation" }}>
+          <defs>
+            <linearGradient id="skyDay" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#87ceeb"/><stop offset="100%" stopColor="#c8e8f8"/>
+            </linearGradient>
+            <linearGradient id="skySunset" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ff7b5a"/><stop offset="50%" stopColor="#ffa070"/><stop offset="100%" stopColor="#ffd080"/>
+            </linearGradient>
+            <linearGradient id="skyNight" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0a0a2a"/><stop offset="100%" stopColor="#2a2a5a"/>
+            </linearGradient>
+          </defs>
           <rect x="0" y="130" width="300" height="70" fill={house.fl}/>
           <line x1="0" y1="130" x2="300" y2="130" stroke="rgba(0,0,0,0.1)" strokeWidth="1"/>
           {house.items.includes("rug")&&<ellipse cx="150" cy="165" rx="60" ry="15" fill="rgba(180,60,60,0.3)"/>}
@@ -285,14 +375,43 @@ function HouseView({ collection, onBack }) {
           {house.items.includes("sofa")&&<><rect x="60" y="100" width="50" height="20" fill="#c06060" rx="5"/><rect x="55" y="95" width="10" height="30" fill="#b05050" rx="4"/><rect x="105" y="95" width="10" height="30" fill="#b05050" rx="4"/><rect x="60" y="90" width="50" height="12" fill="#d07070" rx="5"/></>}
           {house.items.includes("chandelier")&&<><line x1="150" y1="0" x2="150" y2="20" stroke="#c8a020" strokeWidth="1"/><ellipse cx="150" cy="25" rx="20" ry="8" fill="none" stroke="#d4b030" strokeWidth="1.5"/><circle cx="135" cy="28" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/></circle><circle cx="150" cy="30" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="165" cy="28" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/></circle></>}
           {house.items.includes("fountain")&&<><ellipse cx="150" cy="170" rx="25" ry="8" fill="#80c0e0" opacity="0.5"/><rect x="146" y="150" width="8" height="20" fill="#a0a0a0" rx="2"/><circle cx="150" cy="148" r="5" fill="#90b8d8" opacity="0.6"><animate attributeName="r" values="3;6;3" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/></circle></>}
-          <rect x="125" y="20" width="50" height="40" fill="#b0d8f0" stroke="#a0784a" strokeWidth="3" rx="2"/>
+          {/* Window with time-of-day scenery */}
+          <rect x="125" y="20" width="50" height="40"
+            fill={timeMode==="day"?"url(#skyDay)":timeMode==="sunset"?"url(#skySunset)":"url(#skyNight)"}
+            stroke="#a0784a" strokeWidth="3" rx="2"/>
+          {timeMode==="day" && <>
+            <circle cx="160" cy="32" r="4" fill="#ffd93d"/>
+            <circle cx="160" cy="32" r="6" fill="#ffd93d" opacity="0.3"/>
+            <ellipse cx="138" cy="36" rx="6" ry="2" fill="#fff" opacity="0.8"/>
+            <ellipse cx="165" cy="48" rx="5" ry="1.8" fill="#fff" opacity="0.7"/>
+          </>}
+          {timeMode==="sunset" && <>
+            <circle cx="150" cy="52" r="6" fill="#ffe0a0" opacity="0.95"/>
+            <ellipse cx="150" cy="56" rx="20" ry="3" fill="#ffb070" opacity="0.4"/>
+            <ellipse cx="135" cy="40" rx="7" ry="2" fill="#ffcc99" opacity="0.7"/>
+          </>}
+          {timeMode==="night" && <>
+            <circle cx="162" cy="30" r="4" fill="#fffacd"/>
+            <circle cx="160" cy="29" r="3" fill="#2a2a5a"/>
+            <circle cx="132" cy="28" r="0.6" fill="#fff"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.1s" repeatCount="indefinite"/></circle>
+            <circle cx="142" cy="38" r="0.5" fill="#fff"><animate attributeName="opacity" values="0.4;1;0.4" dur="1.7s" repeatCount="indefinite"/></circle>
+            <circle cx="138" cy="50" r="0.6" fill="#fff"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="2.5s" repeatCount="indefinite"/></circle>
+            <circle cx="170" cy="50" r="0.5" fill="#fff"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.9s" repeatCount="indefinite"/></circle>
+            <circle cx="148" cy="26" r="0.4" fill="#fff"><animate attributeName="opacity" values="0.5;1;0.5" dur="2.3s" repeatCount="indefinite"/></circle>
+          </>}
           <line x1="150" y1="20" x2="150" y2="60" stroke="#a0784a" strokeWidth="2"/>
           <line x1="125" y1="40" x2="175" y2="40" stroke="#a0784a" strokeWidth="2"/>
-          {positions.map(({cat,x,y,action})=><MiniCat key={cat.id} cat={cat} x={x} y={y} action={action} tick={tick}/>)}
+          {catsRef.current.map(state => (
+            <MiniCat key={state.cat.id} state={state} tick={tickRef.current}
+              onClick={() => handleCatClick(state)}/>
+          ))}
           {collection.length===0&&<text x="150" y="110" textAnchor="middle" fontSize="10" fill="#999">まだねこがいないよ… ガチャでむかえよう！</text>}
         </svg>
       </div>
       <div style={{ maxWidth:480, margin:"12px auto 0", padding:"0 12px" }}>
+        <div style={{ fontSize:10, color:"#636e72", textAlign:"center", marginBottom:6 }}>
+          💡 ねこをタップするとリアクション！3かいタップでハート💕
+        </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, justifyContent:"center",
           background:"rgba(255,255,255,0.7)", borderRadius:16, padding:12 }}>
           {collection.length>0?collection.map(cat=>(
