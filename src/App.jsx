@@ -127,10 +127,32 @@ const CATS = [
 ].map(c => ({ ...c, img: `${import.meta.env.BASE_URL}cats/${c.id.toString().padStart(3, "0")}.png` }));
 
 const WORDS = {
-  1: { label:"かんたん（1もじ）", words:"asdfjklghtyrueiwoqpbnmcxzv".split("") },
-  2: { label:"ふつう（2〜3もじ）", words:["ai","ue","ao","ka","ki","ku","ke","ko","sa","si","su","se","so","ta","ti","tu","te","to","na","ni","nu","ne","no","ha","hi","hu","he","ho","ma","mi","mu","me","mo","ya","yu","yo","ra","ri","ru","re","ro","wa","wo","nn"] },
-  3: { label:"ちょいむず（たんご）", words:["neko","inu","sora","umi","yama","kawa","hana","mori","kaze","ame","yuki","hosi","tuki","kumo","niwa","mado","isu","mizu","ie","eki","mura","mati","kuni","sato","tori"] },
-  4: { label:"むずかしい（ながいたんご）", words:["sakura","kodomo","tomodati","gakkou","sensee","ohayou","arigato","konnitiwa","nekosuki","sugoiyo","tanosii","uresii","ganbaru","okaasan","otoosan","oneesan","oniisan","purezento","keeki","oyasumi"] },
+  1: { label:"かんたん（1もじ）", words:"asdfjklghtyrueiwoqpbnmcxzv".split("").map(c=>({roma:c,hira:""})) },
+  2: { label:"ふつう（2〜3もじ）", words:[
+    ["ai","あい"],["ue","うえ"],["ao","あお"],
+    ["ka","か"],["ki","き"],["ku","く"],["ke","け"],["ko","こ"],
+    ["sa","さ"],["si","し"],["su","す"],["se","せ"],["so","そ"],
+    ["ta","た"],["ti","ち"],["tu","つ"],["te","て"],["to","と"],
+    ["na","な"],["ni","に"],["nu","ぬ"],["ne","ね"],["no","の"],
+    ["ha","は"],["hi","ひ"],["hu","ふ"],["he","へ"],["ho","ほ"],
+    ["ma","ま"],["mi","み"],["mu","む"],["me","め"],["mo","も"],
+    ["ya","や"],["yu","ゆ"],["yo","よ"],
+    ["ra","ら"],["ri","り"],["ru","る"],["re","れ"],["ro","ろ"],
+    ["wa","わ"],["wo","を"],["nn","ん"]
+  ].map(([roma,hira])=>({roma,hira})) },
+  3: { label:"ちょいむず（たんご）", words:[
+    ["neko","ねこ"],["inu","いぬ"],["sora","そら"],["umi","うみ"],["yama","やま"],
+    ["kawa","かわ"],["hana","はな"],["mori","もり"],["kaze","かぜ"],["ame","あめ"],
+    ["yuki","ゆき"],["hosi","ほし"],["tuki","つき"],["kumo","くも"],["niwa","にわ"],
+    ["mado","まど"],["isu","いす"],["mizu","みず"],["ie","いえ"],["eki","えき"],
+    ["mura","むら"],["mati","まち"],["kuni","くに"],["sato","さと"],["tori","とり"]
+  ].map(([roma,hira])=>({roma,hira})) },
+  4: { label:"むずかしい（ながいたんご）", words:[
+    ["sakura","さくら"],["kodomo","こども"],["tomodati","ともだち"],["gakkou","がっこう"],["sensee","せんせい"],
+    ["ohayou","おはよう"],["arigato","ありがと"],["konnitiwa","こんにちは"],["nekosuki","ねこすき"],["sugoiyo","すごいよ"],
+    ["tanosii","たのしい"],["uresii","うれしい"],["ganbaru","がんばる"],["okaasan","おかあさん"],["otoosan","おとうさん"],
+    ["oneesan","おねえさん"],["oniisan","おにいさん"],["purezento","プレゼント"],["keeki","ケーキ"],["oyasumi","おやすみ"]
+  ].map(([roma,hira])=>({roma,hira})) },
 };
 const KB = [["q","w","e","r","t","y","u","i","o","p"],["a","s","d","f","g","h","j","k","l"],["z","x","c","v","b","n","m"]];
 const GACHA_COST = 50;
@@ -138,10 +160,32 @@ const HOUSES = [
   { name:"ダンボールハウス", need:0, bg:"#d2b48c", fl:"#c4a06a", items:[] },
   { name:"ちいさなおへや", need:5, bg:"#f5e6d0", fl:"#deb887", items:["rug"] },
   { name:"ねこカフェ", need:15, bg:"#fff0e0", fl:"#e8c8a0", items:["rug","shelf","plant"] },
-  { name:"ねこ御殿", need:30, bg:"#fdf0e8", fl:"#d4a87a", items:["rug","shelf","plant","tower","sofa"] },
-  { name:"ねこ城", need:50, bg:"#f8f0ff", fl:"#c8a8d8", items:["rug","shelf","plant","tower","sofa","chandelier","fountain"] },
+  { name:"ねこごてん", need:30, bg:"#fdf0e8", fl:"#d4a87a", items:["rug","shelf","plant","tower","sofa"] },
+  { name:"ねこじょう", need:50, bg:"#f8f0ff", fl:"#c8a8d8", items:["rug","shelf","plant","tower","sofa","chandelier","fountain"] },
 ];
 function getHouse(n){ let h=HOUSES[0]; for(const x of HOUSES){if(n>=x.need)h=x;} return h; }
+
+// ===== THEME =====
+const T = {
+  bg:"#FFF8F0", card:"#FFFFFF",
+  primary:"#FF8C42", primaryDark:"#D6691F",
+  secondary:"#4ECDC4", secondaryDark:"#2EA39A",
+  success:"#7BC67E", successDark:"#56A55A",
+  error:"#FF6B6B", errorDark:"#D84343",
+  xp:"#FFD93D", xpDark:"#C9A711",
+  combo:"#FF69B4", comboDark:"#C73F8A",
+  textMain:"#2D3436", textSub:"#636E72", textWhite:"#FFFFFF",
+  keyBg:"#E8E8E8", keyText:"#666666",
+};
+const RARITY = {
+  "★":     { color:"#B0B0B0", dark:"#7A7A7A", soft:"#ECECEC", label:"ノーマル",      glow:false,  samples:[] },
+  "★★":    { color:"#7BC67E", dark:"#56A55A", soft:"#E7F5E7", label:"アンコモン",    glow:false,  samples:[] },
+  "★★★":   { color:"#5B9BD5", dark:"#3A7AB0", soft:"#E3EEF9", label:"レア",          glow:false,  samples:[] },
+  "★★★★":  { color:"#B07DD0", dark:"#7D4EA0", soft:"#F0E6F6", label:"スーパーレア",  glow:true,   samples:["✨","★"] },
+  "★★★★★": { color:"#FFB800", dark:"#C88C00", soft:"#FFF4CC", label:"ウルトラレア",  glow:true,   samples:["🌟","✨","⭐"] },
+};
+const RARITY_ORDER = ["★","★★","★★★","★★★★","★★★★★"];
+const LEVEL_SAMPLES = { 1:"a", 2:"ka", 3:"neko", 4:"arigato" };
 
 // ===== CAT FACE (image-based) =====
 function CatFace({ cat, size=64 }) {
@@ -175,7 +219,7 @@ const pickEmotion = () => EMOTIONS[Math.floor(Math.random()*EMOTIONS.length)];
 const pickMeow = () => MEOWS[Math.floor(Math.random()*MEOWS.length)];
 const getTimeMode = (d=new Date()) => { const h=d.getHours(); return h>=6&&h<17?"day":h<19?"sunset":"night"; };
 
-// ===== MINI CAT (image-based, rich animation) =====
+// ===== MINI CAT =====
 function MiniCat({ state, tick, onClick }) {
   const { cat, x, y, action, facing, emotion, speech, hearts, jumpUntil } = state;
   const sleeping=action==="sleep", playing=action==="play", walking=action==="walk",
@@ -199,21 +243,22 @@ function MiniCat({ state, tick, onClick }) {
   const speechFade = speech ? (speechAge<2 ? speechAge/2 : speechAge>10 ? Math.max(0,(12-speechAge)/2) : 1) : 0;
   const emoAge = emotion ? tick - emotion.spawnedAt : 0;
   const emoFade = emotion ? (emoAge<3 ? emoAge/3 : emoAge>12 ? Math.max(0,(15-emoAge)/3) : 1) : 0;
+  const rare = RARITY[cat.r];
 
   return (
     <g transform={`translate(${cx},${cy})`} style={{cursor:"pointer"}}
        onPointerDown={e => { e.stopPropagation(); onClick(); }}>
-      <title>{cat.name}（{cat.r}）</title>
+      <title>{cat.name}（{cat.r} {rare.label}）</title>
       <image href={cat.img} width="30" height="30" x="-15" y="-15"
         transform={`scale(${sx},${sy}) rotate(${rot})`}
         style={{pointerEvents:"auto"}}/>
       {sleeping && <text x="6" y="-12" fontSize="6" fill="#88a"
         opacity={0.5+Math.sin(tick*0.1)*0.5} fontWeight="bold">z</text>}
-      {playing && tick%20<10 && <text x="-2" y="-18" fontSize="5" fill="#ffd93d">✦</text>}
-      {sitting && tick%30<18 && <text x="-4" y="-16" fontSize="6" fill="#e17055">♪</text>}
-      {stretching && tick%24<12 && <text x="-3" y="-18" fontSize="5" fill="#6bcb77" opacity="0.7">↕</text>}
-      {grooming && tick%22<11 && <text x="-3" y="-16" fontSize="5" fill="#87ceeb" opacity="0.7">〜</text>}
-      {chasing && tick%8<4 && <text x={-facing*10} y="-2" fontSize="5" fill="#e17055" opacity="0.6">💨</text>}
+      {playing && tick%20<10 && <text x="-2" y="-18" fontSize="5" fill={T.xp}>✦</text>}
+      {sitting && tick%30<18 && <text x="-4" y="-16" fontSize="6" fill={T.primary}>♪</text>}
+      {stretching && tick%24<12 && <text x="-3" y="-18" fontSize="5" fill={T.success} opacity="0.7">↕</text>}
+      {grooming && tick%22<11 && <text x="-3" y="-16" fontSize="5" fill={T.secondary} opacity="0.7">〜</text>}
+      {chasing && tick%8<4 && <text x={-facing*10} y="-2" fontSize="5" fill={T.primary} opacity="0.6">💨</text>}
 
       {emotion && <text x="-5" y={-20 - Math.min(emoAge,10)*0.8} fontSize="10" opacity={emoFade}>{emotion.icon}</text>}
 
@@ -221,10 +266,10 @@ function MiniCat({ state, tick, onClick }) {
         const w = Math.max(speech.text.length*5, cat.name.length*4.5+12) + 6;
         return (
           <g opacity={speechFade}>
-            <rect x={-w/2} y="-40" width={w} height="18" fill="#fff" stroke="#e17055" strokeWidth="0.6" rx="5"/>
-            <polygon points={`${-3},-22 0,-19 3,-22`} fill="#fff" stroke="#e17055" strokeWidth="0.6"/>
-            <text x="0" y="-32" fontSize="6" fill="#e17055" textAnchor="middle" fontWeight="bold">{speech.text}</text>
-            <text x="0" y="-25" fontSize="4" fill="#636e72" textAnchor="middle">{cat.name} {cat.r}</text>
+            <rect x={-w/2} y="-40" width={w} height="18" fill="#fff" stroke={T.primary} strokeWidth="0.8" rx="5"/>
+            <polygon points={`${-3},-22 0,-19 3,-22`} fill="#fff" stroke={T.primary} strokeWidth="0.8"/>
+            <text x="0" y="-32" fontSize="6" fill={T.primary} textAnchor="middle" fontWeight="bold">{speech.text}</text>
+            <text x="0" y="-25" fontSize="4" fill={T.textSub} textAnchor="middle">{cat.name} {cat.r}</text>
           </g>
         );
       })()}
@@ -334,27 +379,25 @@ function HouseView({ collection, onBack }) {
     forceRender(n => n + 1);
   };
 
-  const skyFill = timeMode==="day" ? "#87ceeb"
-                : timeMode==="sunset" ? "linear-gradient(180deg,#ff9a7b,#ffcc88)"
-                : "#1a1a3a";
-
   return(
     <div style={{ minHeight:"100vh",
       background:`linear-gradient(180deg,${timeMode==="day"?"#87ceeb":timeMode==="sunset"?"#ffa07a":"#1a1a3a"} 0%,${timeMode==="day"?"#b0d8f0":timeMode==="sunset"?"#ffc89a":"#2a2a5a"} 40%,${house.bg} 40%)`,
-      fontFamily:"'Zen Maru Gothic',sans-serif", animation:"fadeIn 0.4s ease", transition:"background 2s ease" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px" }}>
-        <button onClick={onBack} style={{ padding:"6px 16px", fontSize:12, background:"rgba(255,255,255,0.8)",
-          border:"none", borderRadius:20, cursor:"pointer", fontFamily:"inherit", fontWeight:700, color:"#636e72" }}>← もどる</button>
-        <div style={{ fontSize:16, fontWeight:900, color:timeMode==="night"?"#fff":"#2d3436" }}>🏠 {house.name}</div>
-        <div style={{ fontSize:11, color:timeMode==="night"?"#dfe6e9":"#636e72" }}>{collection.length}ひき</div>
+      fontFamily:"'Zen Maru Gothic',sans-serif", animation:"fadeIn 0.3s ease", transition:"background 2s ease" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", gap:10 }}>
+        <button className="nt-btn nt-btn-sub" onClick={onBack}>← もどる</button>
+        <div style={{ fontSize:20, fontWeight:900, color:timeMode==="night"?"#fff":T.textMain }}>🏠 {house.name}</div>
+        <div style={{ fontSize:14, fontWeight:700, color:timeMode==="night"?"#dfe6e9":T.textSub, background:"rgba(255,255,255,0.85)", padding:"6px 12px", borderRadius:12, minWidth:64, textAlign:"center" }}>{collection.length}ひき</div>
       </div>
-      {nextH&&<div style={{ textAlign:"center", fontSize:11, color:"#636e72", marginBottom:8,
-        background:"rgba(255,255,255,0.6)", padding:"4px 12px", borderRadius:12,
-        display:"inline-block", marginLeft:"50%", transform:"translateX(-50%)" }}>
-        あと{nextH.need-collection.length}ひきで「{nextH.name}」にグレードアップ！</div>}
-      <div style={{ width:"100%", maxWidth:480, margin:"0 auto", padding:"0 8px" }}>
+      {nextH&&<div style={{ textAlign:"center", marginBottom:10 }}>
+        <div style={{ display:"inline-block", fontSize:13, fontWeight:700, color:T.textSub,
+          background:"#FFFFFF", padding:"6px 14px", borderRadius:16,
+          boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
+          あと{nextH.need-collection.length}ひきで「{nextH.name}」にグレードアップ！
+        </div>
+      </div>}
+      <div style={{ width:"100%", maxWidth:480, margin:"0 auto", padding:"0 10px" }}>
         <svg viewBox="0 0 300 200" style={{ width:"100%", borderRadius:16, background:house.bg,
-          boxShadow:"0 4px 20px rgba(0,0,0,0.15)", touchAction:"manipulation" }}>
+          boxShadow:"0 6px 24px rgba(0,0,0,0.18)", touchAction:"manipulation" }}>
           <defs>
             <linearGradient id="skyDay" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#87ceeb"/><stop offset="100%" stopColor="#c8e8f8"/>
@@ -375,7 +418,6 @@ function HouseView({ collection, onBack }) {
           {house.items.includes("sofa")&&<><rect x="60" y="100" width="50" height="20" fill="#c06060" rx="5"/><rect x="55" y="95" width="10" height="30" fill="#b05050" rx="4"/><rect x="105" y="95" width="10" height="30" fill="#b05050" rx="4"/><rect x="60" y="90" width="50" height="12" fill="#d07070" rx="5"/></>}
           {house.items.includes("chandelier")&&<><line x1="150" y1="0" x2="150" y2="20" stroke="#c8a020" strokeWidth="1"/><ellipse cx="150" cy="25" rx="20" ry="8" fill="none" stroke="#d4b030" strokeWidth="1.5"/><circle cx="135" cy="28" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/></circle><circle cx="150" cy="30" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="165" cy="28" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/></circle></>}
           {house.items.includes("fountain")&&<><ellipse cx="150" cy="170" rx="25" ry="8" fill="#80c0e0" opacity="0.5"/><rect x="146" y="150" width="8" height="20" fill="#a0a0a0" rx="2"/><circle cx="150" cy="148" r="5" fill="#90b8d8" opacity="0.6"><animate attributeName="r" values="3;6;3" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/></circle></>}
-          {/* Window with time-of-day scenery */}
           <rect x="125" y="20" width="50" height="40"
             fill={timeMode==="day"?"url(#skyDay)":timeMode==="sunset"?"url(#skySunset)":"url(#skyNight)"}
             stroke="#a0784a" strokeWidth="3" rx="2"/>
@@ -405,24 +447,29 @@ function HouseView({ collection, onBack }) {
             <MiniCat key={state.cat.id} state={state} tick={tickRef.current}
               onClick={() => handleCatClick(state)}/>
           ))}
-          {collection.length===0&&<text x="150" y="110" textAnchor="middle" fontSize="10" fill="#999">まだねこがいないよ… ガチャでむかえよう！</text>}
+          {collection.length===0&&<text x="150" y="110" textAnchor="middle" fontSize="12" fill="#999" fontWeight="700">まだねこがいないよ… ガチャでむかえよう！</text>}
         </svg>
       </div>
-      <div style={{ maxWidth:480, margin:"12px auto 0", padding:"0 12px" }}>
-        <div style={{ fontSize:10, color:"#636e72", textAlign:"center", marginBottom:6 }}>
+      <div style={{ maxWidth:480, margin:"14px auto 0", padding:"0 12px" }}>
+        <div style={{ fontSize:13, color:T.textSub, textAlign:"center", marginBottom:8, fontWeight:700 }}>
           💡 ねこをタップするとリアクション！3かいタップでハート💕
         </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, justifyContent:"center",
-          background:"rgba(255,255,255,0.7)", borderRadius:16, padding:12 }}>
-          {collection.length>0?collection.map(cat=>(
-            <div key={cat.id} style={{ background:"rgba(255,255,255,0.9)", borderRadius:10, padding:"4px 8px",
-              textAlign:"center", fontSize:9, fontWeight:700, color:"#636e72", minWidth:50 }}>
-              <div style={{ fontSize:10, color:cat.r.length>=4?"#e17055":"#333" }}>{cat.name}</div>
-              <div style={{ fontSize:8, color:"#e17055" }}>{cat.r}</div>
-            </div>
-          )):<div style={{ fontSize:12, color:"#999", padding:20 }}>タイピングでXPをためてガチャをまわそう！</div>}
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center",
+          background:T.card, borderRadius:16, padding:14, boxShadow:"0 4px 16px rgba(0,0,0,0.08)" }}>
+          {collection.length>0?collection.map(cat=>{
+            const rare = RARITY[cat.r];
+            return(
+              <div key={cat.id} style={{ background:rare.soft, borderRadius:12, padding:"6px 10px",
+                textAlign:"center", fontSize:12, fontWeight:800, color:T.textMain, minWidth:60,
+                border:`2px solid ${rare.color}` }}>
+                <div style={{ fontSize:12, color:T.textMain }}>{cat.name}</div>
+                <div style={{ fontSize:12, color:rare.dark, fontWeight:900 }}>{cat.r}</div>
+              </div>
+            );
+          }):<div style={{ fontSize:14, color:T.textSub, padding:20, fontWeight:700 }}>タイピングでXPをためてガチャをまわそう！</div>}
         </div>
       </div>
+      <div style={{ height:24 }}/>
     </div>
   );
 }
@@ -430,27 +477,133 @@ function HouseView({ collection, onBack }) {
 // ===== GACHA MODAL =====
 function GachaModal({ cat, isNew, onClose }) {
   const [phase, setPhase] = useState(0);
-  useEffect(()=>{const t=setTimeout(()=>setPhase(1),1500);return()=>clearTimeout(t);},[]);
+  const rarity = RARITY[cat.r];
+  const isUltra = cat.r === "★★★★★";
+  const isSuper = cat.r === "★★★★";
+  const revealDelay = isUltra ? 3500 : isSuper ? 2500 : 1500;
+
+  useEffect(()=>{const t=setTimeout(()=>setPhase(1),revealDelay);return()=>clearTimeout(t);},[revealDelay]);
+
+  const starCount = isUltra ? 18 : isSuper ? 10 : 0;
+  const stars = useMemo(() => Array.from({length:starCount}, (_,i) => ({
+    id:i, x: 50+Math.cos(i/starCount*Math.PI*2)*40,
+    y: 50+Math.sin(i/starCount*Math.PI*2)*40,
+    delay: i*0.08,
+    emoji: isUltra ? ["⭐","✨","🌟","💫"][i%4] : ["✨","★"][i%2]
+  })), [starCount, isUltra]);
+
+  const confetti = useMemo(() => isUltra ? Array.from({length:24}, (_,i) => ({
+    id:i, left: Math.random()*100, delay: Math.random()*0.8,
+    color: ["#FF6B6B","#FFD93D","#7BC67E","#4ECDC4","#B07DD0","#FF8C42"][i%6],
+    rot: Math.random()*360,
+  })) : [], [isUltra]);
+
+  const bgStyle = phase===0
+    ? (isUltra ? "conic-gradient(from 0deg,#FF6B6B,#FFD93D,#7BC67E,#4ECDC4,#B07DD0,#FF8C42,#FF6B6B)"
+      : isSuper ? "radial-gradient(circle,#FFD700,#B07DD0)"
+      : cat.r==="★★★" ? "radial-gradient(circle,#FFD93D,#5B9BD5)"
+      : cat.r==="★★" ? "radial-gradient(circle,#FFD93D,#7BC67E)"
+      : "radial-gradient(circle,#FFD93D,#FF8C42)")
+    : (isUltra ? "linear-gradient(135deg,#FFF4D6,#FFE099,#FFD93D,#FFB800)"
+      : isSuper ? "linear-gradient(135deg,#F5E6F9,#E7D0F0)"
+      : cat.r==="★★★" ? "linear-gradient(135deg,#E3EEF9,#C7DEF3)"
+      : cat.r==="★★" ? "linear-gradient(135deg,#E7F5E7,#C6E6C6)"
+      : "#FFFFFF");
+
   return(
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
-      display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, animation:"fadeIn 0.3s" }}>
-      <div style={{ background:phase===0?"radial-gradient(circle,#ffd93d,#ff9a3c)"
-        :cat.r.length>=4?"radial-gradient(circle,#ffd700,#ff6b6b,#c77dff)":"radial-gradient(circle,#fff8e7,#ffeaa7)",
-        borderRadius:24, padding:"36px 44px", textAlign:"center", minWidth:260,
-        boxShadow:"0 20px 60px rgba(0,0,0,0.5)",
-        animation:phase===0?"shake 0.15s infinite alternate":"popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)" }}>
-        {phase===0?<div style={{fontSize:72,animation:"pulse 0.5s infinite"}}>🎁</div>:<>
-          <div style={{fontSize:14,color:"#e74c3c",fontWeight:800,letterSpacing:2,marginBottom:6}}>
-            {cat.r.length>=4?"🌟 ちょうレア！🌟":cat.r.length>=3?"✨ レア！✨":isNew?"🆕 NEW!":"もっているねこ"}</div>
-          <CatFace cat={cat} size={100}/>
-          <div style={{fontSize:20,fontWeight:900,marginTop:10,color:"#2d3436"}}>{cat.name}</div>
-          <div style={{fontSize:18,color:"#e17055",marginTop:2}}>{cat.r}</div>
-          <div style={{fontSize:12,color:"#636e72",marginTop:6}}>「{cat.d}」</div>
-          <button onClick={onClose} style={{ marginTop:16,padding:"10px 30px",fontSize:15,fontWeight:700,
-            background:"#6c5ce7",color:"#fff",border:"none",borderRadius:30,cursor:"pointer",
-            fontFamily:"'Zen Maru Gothic',sans-serif",boxShadow:"0 4px 15px rgba(108,92,231,0.4)" }}>
-            {isNew?"やったー！":"OK！"}</button>
-        </>}
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.72)",
+      display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000,
+      animation:"fadeIn 0.3s", padding:16, overflow:"hidden" }}>
+
+      {/* 紙吹雪 (ウルトラレアのみ) */}
+      {phase===1 && isUltra && confetti.map(c => (
+        <div key={c.id} style={{
+          position:"absolute", top:-20, left:`${c.left}%`, width:10, height:14,
+          background:c.color, borderRadius:2, pointerEvents:"none",
+          animation:`confetti 3s ${c.delay}s linear infinite`,
+          transform:`rotate(${c.rot}deg)`
+        }}/>
+      ))}
+
+      {/* 光の放射 (レア以上) */}
+      {phase===1 && !isUltra && cat.r.length>=3 && (
+        <div style={{position:"absolute", inset:0, pointerEvents:"none",
+          background:`radial-gradient(circle at center, ${rarity.color}33 0%, transparent 60%)`,
+          animation:"fadeIn 0.6s"}}/>
+      )}
+
+      <div style={{
+        position:"relative",
+        background:bgStyle,
+        borderRadius:24, padding:isUltra?"44px 48px":"36px 44px", textAlign:"center", minWidth:280, maxWidth:360,
+        boxShadow: isUltra ? `0 0 60px ${rarity.color}, 0 20px 60px rgba(0,0,0,0.4)`
+                 : isSuper ? `0 0 40px ${rarity.color}aa, 0 18px 50px rgba(0,0,0,0.35)`
+                 : "0 16px 50px rgba(0,0,0,0.35)",
+        animation: phase===0
+          ? (isUltra ? "gachaUltraShake 0.18s infinite alternate" : "gachaShake 0.15s infinite alternate")
+          : (isUltra ? "gachaPopUltra 0.7s cubic-bezier(0.175,0.885,0.32,1.275)"
+            : isSuper ? "gachaPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275)"
+            : "gachaPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275)"),
+      }}>
+        {/* オーラ演出 (スーパーレア/ウルトラレア) */}
+        {phase===1 && (isSuper||isUltra) && (
+          <div style={{position:"absolute", inset:-20, borderRadius:32, pointerEvents:"none",
+            background:`radial-gradient(circle, ${rarity.color}55 0%, transparent 70%)`,
+            animation:"auraGlow 2s ease-in-out infinite"}}/>
+        )}
+
+        {/* まわりに飛び散る星 (スーパーレア以上) */}
+        {phase===1 && stars.map(s => (
+          <div key={s.id} style={{
+            position:"absolute", left:`${s.x}%`, top:`${s.y}%`,
+            fontSize: isUltra?20:16,
+            animation:`starBurst 1.4s ${s.delay}s ease-out both`,
+            pointerEvents:"none", zIndex:1
+          }}>{s.emoji}</div>
+        ))}
+
+        {phase===0 ? (
+          <div style={{fontSize:80, animation:"pulse 0.5s infinite"}}>🎁</div>
+        ) : (
+          <div style={{position:"relative", zIndex:2}}>
+            {/* 特別ラベル */}
+            <div style={{
+              fontSize: isUltra ? 20 : 14,
+              color: isUltra ? "#fff" : rarity.dark,
+              fontWeight:900, letterSpacing:2, marginBottom:8,
+              textShadow: isUltra ? "0 2px 6px rgba(201,167,17,0.6), 0 0 10px #fff" : "none"
+            }}>
+              {isUltra ? "🌟 でんせつのねこ！🌟"
+               : isSuper ? "✨ ちょうレア！ ✨"
+               : cat.r==="★★★" ? "💎 レア！ 💎"
+               : isNew ? "🆕 あたらしいねこ！" : "もっているねこ"}
+            </div>
+
+            {/* 猫画像 */}
+            <div style={{
+              display:"inline-block",
+              padding:isUltra?8:4,
+              borderRadius:20,
+              background: isUltra ? "rgba(255,255,255,0.7)" : isSuper ? "rgba(255,255,255,0.5)" : "transparent",
+              boxShadow: isUltra ? `inset 0 0 30px ${rarity.color}66` : "none"
+            }}>
+              <CatFace cat={cat} size={isUltra?120:100}/>
+            </div>
+
+            <div style={{fontSize:24, fontWeight:900, marginTop:12, color:T.textMain}}>{cat.name}</div>
+            <div style={{
+              display:"inline-block", marginTop:6, padding:"4px 14px",
+              borderRadius:16, background:rarity.color, color:"#fff",
+              fontSize:16, fontWeight:900, letterSpacing:1,
+              boxShadow:`0 3px 0 ${rarity.dark}`
+            }}>{cat.r} {rarity.label}</div>
+            <div style={{fontSize:14, color:T.textSub, marginTop:10, fontWeight:700}}>「{cat.d}」</div>
+
+            <button onClick={onClose} className="nt-btn nt-btn-primary" style={{marginTop:20}}>
+              {isNew ? "やったー！" : "OK！"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -463,16 +616,17 @@ export default function NekoTyping() {
   const [xp,setXp]=useState(()=>loadFromStorage("xp",0));
   const [totalXp,setTotalXp]=useState(()=>loadFromStorage("totalXp",0));
   const [collection,setCollection]=useState(()=>loadFromStorage("collection",[]));
-  const [word,setWord]=useState("");
+  const [word,setWord]=useState(null);
   const [typed,setTyped]=useState("");
   const [combo,setCombo]=useState(0);
   const [correct,setCorrect]=useState(()=>loadFromStorage("correct",0));
   const [miss,setMiss]=useState(()=>loadFromStorage("miss",0));
   const [shakeKey,setShakeKey]=useState(null);
-  const [sparkle,setSparkle]=useState(false);
+  const [flashKey,setFlashKey]=useState(null);
+  const [flashId,setFlashId]=useState(0);
+  const [flashData,setFlashData]=useState({xp:0,combo:0});
   const [gachaCat,setGachaCat]=useState(null);
   const [gachaNew,setGachaNew]=useState(false);
-  const [msg,setMsg]=useState("");
 
   useEffect(()=>saveToStorage("level",level),[level]);
   useEffect(()=>saveToStorage("xp",xp),[xp]);
@@ -498,15 +652,16 @@ export default function NekoTyping() {
     const k=e.key.toLowerCase();
     if(k.length!==1||e.ctrlKey||e.metaKey||e.altKey)return;
     e.preventDefault();
-    const nx=word[typed.length];
+    if(!word)return;
+    const nx=word.roma[typed.length];
     if(k===nx){
       const nw=typed+k;setTyped(nw);setCorrect(c=>c+1);
       setCombo(c=>c+1);
-      if(nw===word){
+      setFlashKey(k);setTimeout(()=>setFlashKey(f=>f===k?null:f),180);
+      if(nw===word.roma){
         const bx=level*5+(combo>=5?5:0);
         setXp(x=>x+bx);setTotalXp(t=>t+bx);
-        setSparkle(true);setMsg(`+${bx} XP!`);
-        setTimeout(()=>{setSparkle(false);setMsg("")},800);
+        setFlashData({xp:bx,combo:combo+1});setFlashId(f=>f+1);
         setTimeout(()=>{setWord(nextWord());setTyped("")},400);
       }
     }else{setMiss(m=>m+1);setCombo(0);setShakeKey(nx);setTimeout(()=>setShakeKey(null),300);}
@@ -530,131 +685,498 @@ export default function NekoTyping() {
 
   const house=getHouse(collection.length);
 
+  // ゲーム中の文字サイズ
+  const wordCharSize = level===1 ? 56 : level===4 ? 36 : 44;
+
+  // ずかんのレア度ごと集計
+  const catsByRarity = useMemo(() => {
+    const m = {};
+    for (const r of RARITY_ORDER) m[r] = [];
+    for (const c of CATS) m[c.r].push(c);
+    return m;
+  }, []);
+  const ownedByRarity = useMemo(() => {
+    const m = {};
+    for (const r of RARITY_ORDER) m[r] = 0;
+    for (const c of collection) if (m[c.r] !== undefined) m[c.r]++;
+    return m;
+  }, [collection]);
+
+  // 背景に敷く足跡パターン
+  const pawBg = `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><g fill='%23FF8C42' opacity='0.08'><circle cx='30' cy='30' r='7'/><circle cx='22' cy='22' r='3.5'/><circle cx='38' cy='22' r='3.5'/><circle cx='24' cy='38' r='3.5'/><circle cx='36' cy='38' r='3.5'/><circle cx='100' cy='90' r='7'/><circle cx='92' cy='82' r='3.5'/><circle cx='108' cy='82' r='3.5'/><circle cx='94' cy='98' r='3.5'/><circle cx='106' cy='98' r='3.5'/></g></svg>`)}")`;
+
   return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(180deg,#ffecd2 0%,#fcb69f 50%,#ff9a9e 100%)",
-      fontFamily:"'Zen Maru Gothic','Rounded Mplus 1c',sans-serif",overflow:"hidden"}}>
+    <div style={{ minHeight:"100vh", background:T.bg, fontFamily:"'Zen Maru Gothic','Rounded Mplus 1c',sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet"/>
       <style>{`
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes popIn{from{transform:scale(0.3);opacity:0}to{transform:scale(1);opacity:1}}
-        @keyframes shake{0%{transform:translateX(-3px) rotate(-2deg)}100%{transform:translateX(3px) rotate(2deg)}}
-        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-        @keyframes bounceIn{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+        * { box-sizing:border-box; }
+        body { margin:0; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+        @keyframes popIn { from { transform:scale(0.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+        @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+        @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+        @keyframes bounceIn { 0% { transform:scale(0); } 50% { transform:scale(1.25); } 100% { transform:scale(1); } }
+        @keyframes charBounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+        @keyframes keyShake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-3px); } 75% { transform:translateX(3px); } }
+        @keyframes keyPulse { 0%,100% { transform:scale(1); box-shadow:0 4px 0 ${T.primaryDark}, 0 0 0 4px rgba(255,140,66,0.35), 0 6px 14px rgba(255,140,66,0.4); }
+          50% { transform:scale(1.06); box-shadow:0 4px 0 ${T.primaryDark}, 0 0 0 7px rgba(255,140,66,0.25), 0 6px 18px rgba(255,140,66,0.5); } }
+        @keyframes keyFlash { 0% { background:${T.success}; color:#fff; transform:scale(1.1); } 100% { } }
+        @keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+        @keyframes gachaShake { 0% { transform:translateX(-3px) rotate(-2deg); } 100% { transform:translateX(3px) rotate(2deg); } }
+        @keyframes gachaUltraShake { 0% { transform:translate(-4px,-2px) rotate(-3deg) scale(1); } 100% { transform:translate(4px,2px) rotate(3deg) scale(1.05); } }
+        @keyframes gachaPop { 0% { transform:scale(0.3); opacity:0; } 60% { transform:scale(1.1); opacity:1; } 100% { transform:scale(1); opacity:1; } }
+        @keyframes gachaPopUltra { 0% { transform:scale(0.2) rotate(-10deg); opacity:0; } 50% { transform:scale(1.2) rotate(3deg); opacity:1; } 80% { transform:scale(0.95) rotate(-1deg); } 100% { transform:scale(1) rotate(0); opacity:1; } }
+        @keyframes auraGlow { 0%,100% { opacity:0.7; transform:scale(1); } 50% { opacity:1; transform:scale(1.08); } }
+        @keyframes starBurst { 0% { opacity:0; transform:scale(0) translate(0,0); } 30% { opacity:1; transform:scale(1.2); } 100% { opacity:0; transform:scale(0.8) translate(${0}px,-20px); } }
+        @keyframes confetti { 0% { transform:translateY(-20px) rotate(0); opacity:1; } 100% { transform:translateY(110vh) rotate(720deg); opacity:0.8; } }
+        @keyframes cardFlash { 0%,100% { opacity:0; } 30% { opacity:1; } }
+        @keyframes xpFloat {
+          0% { opacity:0; transform:translateY(8px) scale(0.55); }
+          20% { opacity:1; transform:translateY(-6px) scale(1.15); }
+          60% { opacity:1; transform:translateY(-30px) scale(1); }
+          100% { opacity:0; transform:translateY(-64px) scale(0.95); }
+        }
+        @keyframes comboPop {
+          0% { opacity:0; transform:translate(-50%,10px) scale(0.5); }
+          25% { opacity:1; transform:translate(-50%,-6px) scale(1.25); }
+          60% { opacity:1; transform:translate(-50%,-20px) scale(1); }
+          100% { opacity:0; transform:translate(-50%,-44px) scale(0.9); }
+        }
+        @keyframes sparklePop {
+          0% { opacity:0; transform:translate(-50%,-50%) scale(0); }
+          20% { opacity:1; transform:translate(-50%,-50%) scale(1.35); }
+          100% { opacity:0; transform:translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.3); }
+        }
+
+        .nt-btn {
+          display:inline-flex; align-items:center; justify-content:center; gap:8px;
+          min-height:48px; padding:12px 24px;
+          font-family:inherit; font-size:18px; font-weight:900;
+          border:none; border-radius:16px; cursor:pointer;
+          transition:transform 0.08s ease, box-shadow 0.08s ease;
+          user-select:none; -webkit-tap-highlight-color:transparent;
+          color:#fff;
+        }
+        .nt-btn:active { transform:translateY(4px); }
+        .nt-btn:disabled { cursor:not-allowed; opacity:0.55; }
+        .nt-btn-primary { background:${T.primary}; box-shadow:0 4px 0 ${T.primaryDark}, 0 6px 12px rgba(0,0,0,0.15); }
+        .nt-btn-primary:hover:not(:disabled) { transform:translateY(2px); box-shadow:0 2px 0 ${T.primaryDark}, 0 3px 8px rgba(0,0,0,0.15); }
+        .nt-btn-primary:active:not(:disabled) { box-shadow:0 0 0 ${T.primaryDark}; }
+        .nt-btn-secondary { background:${T.secondary}; box-shadow:0 4px 0 ${T.secondaryDark}, 0 6px 12px rgba(0,0,0,0.15); }
+        .nt-btn-secondary:hover:not(:disabled) { transform:translateY(2px); box-shadow:0 2px 0 ${T.secondaryDark}, 0 3px 8px rgba(0,0,0,0.15); }
+        .nt-btn-secondary:active:not(:disabled) { box-shadow:0 0 0 ${T.secondaryDark}; }
+        .nt-btn-xp { background:${T.xp}; color:${T.textMain}; box-shadow:0 4px 0 ${T.xpDark}, 0 6px 12px rgba(0,0,0,0.15); }
+        .nt-btn-xp:hover:not(:disabled) { transform:translateY(2px); box-shadow:0 2px 0 ${T.xpDark}, 0 3px 8px rgba(0,0,0,0.15); }
+        .nt-btn-xp:active:not(:disabled) { box-shadow:0 0 0 ${T.xpDark}; }
+        .nt-btn-sub {
+          min-height:40px; padding:8px 16px; font-size:14px;
+          background:${T.card}; color:${T.textSub};
+          box-shadow:0 3px 0 #D5D5D5, 0 4px 8px rgba(0,0,0,0.08);
+        }
+        .nt-btn-sub:hover { transform:translateY(2px); box-shadow:0 1px 0 #D5D5D5, 0 2px 6px rgba(0,0,0,0.08); }
+        .nt-btn-sub:active { box-shadow:0 0 0 #D5D5D5; }
+        .nt-btn-danger {
+          min-height:40px; padding:6px 16px; font-size:13px;
+          background:#FFFFFF; color:${T.textSub};
+          box-shadow:0 3px 0 #DDD, 0 4px 8px rgba(0,0,0,0.06);
+        }
+        .nt-btn-danger:hover { transform:translateY(2px); box-shadow:0 1px 0 #DDD, 0 2px 6px rgba(0,0,0,0.06); }
+        .nt-btn-danger:active { box-shadow:0 0 0 #DDD; }
+
+        .nt-card {
+          background:${T.card}; border-radius:16px; padding:16px;
+          box-shadow:0 4px 16px rgba(0,0,0,0.08);
+        }
+        .nt-level-card {
+          background:${T.card}; border:3px solid #EEE; border-radius:16px;
+          padding:14px 16px; cursor:pointer; transition:transform 0.1s, box-shadow 0.1s, border-color 0.1s;
+          text-align:center; min-height:48px;
+          box-shadow:0 4px 0 #E5E5E5, 0 5px 10px rgba(0,0,0,0.06);
+          font-family:inherit;
+        }
+        .nt-level-card:hover { transform:translateY(-2px); box-shadow:0 6px 0 #E5E5E5, 0 8px 14px rgba(0,0,0,0.08); }
+        .nt-level-card.selected {
+          border-color:${T.primary}; background:#FFF4EC;
+          box-shadow:0 4px 0 ${T.primaryDark}, 0 6px 14px rgba(255,140,66,0.25);
+        }
+
+        .nt-shimmer {
+          position:relative; overflow:hidden;
+        }
+        .nt-shimmer::before {
+          content:""; position:absolute; inset:0; pointer-events:none;
+          background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
+          background-size:200% 100%;
+          animation:shimmer 2.5s linear infinite;
+        }
       `}</style>
 
       {/* TITLE */}
       {screen==="title"&&(
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:20,animation:"fadeIn 0.5s"}}>
-          <div style={{animation:"float 3s ease-in-out infinite",marginBottom:8}}><CatFace cat={CATS[0]} size={80}/></div>
-          <h1 style={{fontSize:32,fontWeight:900,color:"#2d3436",margin:"8px 0 2px"}}>🐾 ねこあつめ</h1>
-          <h2 style={{fontSize:22,fontWeight:700,color:"#e17055",margin:"0 0 10px"}}>タイピング</h2>
-          <div style={{background:"rgba(255,255,255,0.7)",borderRadius:14,padding:"8px 16px",marginBottom:14,textAlign:"center"}}>
-            <div style={{fontSize:11,color:"#636e72"}}>🏠 おうち: <b>{house.name}</b> ｜ 🐱 {collection.length}ひき</div>
+        <div style={{minHeight:"100vh",padding:"20px 16px 28px",
+          backgroundImage:pawBg, backgroundSize:"140px 140px",
+          display:"flex",flexDirection:"column",alignItems:"center",
+          animation:"fadeIn 0.3s"}}>
+
+          <div style={{animation:"float 3s ease-in-out infinite",marginBottom:4}}>
+            <CatFace cat={CATS[0]} size={96}/>
           </div>
-          <p style={{fontSize:13,color:"#636e72",textAlign:"center",maxWidth:280,lineHeight:1.7,marginBottom:16}}>
-            タイピングでXPをためてガチャをまわそう！<br/>ねこがふえるとおうちもレベルアップ！</p>
-          <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:280,marginBottom:14}}>
-            <div style={{fontSize:12,fontWeight:700,color:"#2d3436",textAlign:"center"}}>レベルをえらぼう</div>
-            {Object.entries(WORDS).map(([lv,data])=>(
-              <button key={lv} onClick={()=>setLevel(Number(lv))} style={{
-                padding:"10px 16px",border:"3px solid",borderColor:level===Number(lv)?"#e17055":"rgba(255,255,255,0.6)",
-                borderRadius:14,background:level===Number(lv)?"linear-gradient(135deg,#e17055,#d63031)":"rgba(255,255,255,0.7)",
-                color:level===Number(lv)?"#fff":"#2d3436",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-                boxShadow:level===Number(lv)?"0 4px 12px rgba(225,112,85,0.4)":"none"
-              }}>Lv.{lv}　{data.label}</button>
-            ))}
+
+          <h1 style={{fontSize:40,fontWeight:900,color:T.textMain,margin:"4px 0 0",
+            textShadow:"0 3px 0 #FFE4CC, 0 5px 10px rgba(255,140,66,0.3)",
+            letterSpacing:1}}>
+            🐾 ねこあつめ
+          </h1>
+          <h2 style={{fontSize:28,fontWeight:900,color:T.primary,margin:"0 0 14px",
+            textShadow:"0 2px 0 #FFE4CC"}}>
+            タイピング
+          </h2>
+
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:16}}>
+            <div style={{background:T.card,borderRadius:16,padding:"10px 16px",fontSize:13,fontWeight:700,
+              color:T.textSub,boxShadow:"0 3px 10px rgba(0,0,0,0.06)"}}>
+              🏠 <b style={{color:T.textMain}}>{house.name}</b>
+            </div>
+            <div style={{background:T.card,borderRadius:16,padding:"10px 16px",fontSize:13,fontWeight:700,
+              color:T.textSub,boxShadow:"0 3px 10px rgba(0,0,0,0.06)"}}>
+              🐱 <b style={{color:T.textMain}}>{collection.length}</b>ひき
+            </div>
+            <div style={{background:T.card,borderRadius:16,padding:"10px 16px",fontSize:13,fontWeight:700,
+              color:T.textSub,boxShadow:"0 3px 10px rgba(0,0,0,0.06)"}}>
+              💰 <b style={{color:T.textMain}}>{xp}</b> XP
+            </div>
           </div>
-          <button onClick={()=>{setWord("");setTyped("");setCombo(0);setCorrect(0);setMiss(0);setScreen("game");}} style={{
-            padding:"14px 44px",fontSize:18,fontWeight:900,background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",
-            color:"#fff",border:"none",borderRadius:50,cursor:"pointer",fontFamily:"inherit",
-            boxShadow:"0 6px 20px rgba(108,92,231,0.5)"}}>▶ はじめる</button>
-          <div style={{display:"flex",gap:10,marginTop:14,flexWrap:"wrap",justifyContent:"center"}}>
-            <button onClick={()=>setScreen("zukan")} style={{padding:"8px 18px",fontSize:12,fontWeight:700,
-              background:"rgba(255,255,255,0.8)",color:"#6c5ce7",border:"2px solid #6c5ce7",borderRadius:30,cursor:"pointer",fontFamily:"inherit"}}>
-              📖 ねこずかん ({collection.length}/{CATS.length})</button>
-            <button onClick={()=>setScreen("house")} style={{padding:"8px 18px",fontSize:12,fontWeight:700,
-              background:"rgba(255,255,255,0.8)",color:"#e17055",border:"2px solid #e17055",borderRadius:30,cursor:"pointer",fontFamily:"inherit"}}>
-              🏠 おうちをみる</button>
+
+          <p style={{fontSize:14,color:T.textSub,textAlign:"center",maxWidth:320,lineHeight:1.7,
+            margin:"0 0 18px",fontWeight:700}}>
+            タイピングでXPをためてガチャをまわそう！<br/>ねこがふえるとおうちもグレードアップ！
+          </p>
+
+          <div style={{width:"100%",maxWidth:520,marginBottom:20}}>
+            <div style={{fontSize:16,fontWeight:900,color:T.textMain,textAlign:"center",marginBottom:10}}>
+              レベルをえらぼう
+            </div>
+            <div style={{display:"grid",
+              gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",
+              gap:10}}>
+              {Object.entries(WORDS).map(([lv,data])=>{
+                const lvn = Number(lv);
+                return(
+                  <button key={lv} onClick={()=>setLevel(lvn)}
+                    className={`nt-level-card${level===lvn?" selected":""}`}>
+                    <div style={{fontSize:14,fontWeight:900,color:level===lvn?T.primary:T.textSub,marginBottom:4}}>
+                      Lv.{lv}
+                    </div>
+                    <div style={{fontSize:22,fontWeight:900,color:T.textMain,
+                      fontFamily:"monospace",margin:"6px 0 4px",letterSpacing:1}}>
+                      {LEVEL_SAMPLES[lv]}
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:T.textSub,lineHeight:1.3}}>
+                      {data.label}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div style={{marginTop:10,fontSize:12,color:"#636e72"}}>🏆 そうXP: {totalXp}　|　💰 {xp} XP</div>
-          <button onClick={resetData} style={{marginTop:18,padding:"6px 16px",fontSize:11,fontWeight:700,
-            background:"rgba(255,255,255,0.5)",color:"#b2bec3",border:"1px solid #dfe6e9",borderRadius:20,
-            cursor:"pointer",fontFamily:"inherit"}}>🗑️ データをリセット</button>
+
+          <button className="nt-btn nt-btn-primary" style={{padding:"16px 44px",fontSize:20,minWidth:220}}
+            onClick={()=>{setWord(null);setTyped("");setCombo(0);setCorrect(0);setMiss(0);setScreen("game");}}>
+            ▶ はじめる
+          </button>
+
+          <div style={{display:"flex",gap:12,marginTop:18,flexWrap:"wrap",justifyContent:"center"}}>
+            <button className="nt-btn nt-btn-secondary" onClick={()=>setScreen("zukan")}>
+              📖 ねこずかん ({collection.length}/{CATS.length})
+            </button>
+            <button className="nt-btn nt-btn-xp" onClick={()=>setScreen("house")}>
+              🏠 おうちをみる
+            </button>
+          </div>
+
+          <div style={{marginTop:16,fontSize:13,fontWeight:700,color:T.textSub}}>
+            🏆 そうXP: <b style={{color:T.textMain,fontSize:16}}>{totalXp}</b>
+          </div>
+
+          <button className="nt-btn-danger" onClick={resetData} style={{marginTop:20,fontFamily:"inherit",border:"none",borderRadius:12,cursor:"pointer"}}>
+            🗑️ データをリセット
+          </button>
         </div>
       )}
 
       {/* GAME */}
       {screen==="game"&&(
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minHeight:"100vh",padding:"12px 12px 8px",animation:"fadeIn 0.3s"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",maxWidth:460,marginBottom:8}}>
-            <button onClick={()=>setScreen("title")} style={{padding:"5px 14px",fontSize:11,background:"rgba(255,255,255,0.7)",
-              border:"none",borderRadius:20,cursor:"pointer",fontFamily:"inherit",fontWeight:700,color:"#636e72"}}>← もどる</button>
-            <div style={{fontSize:11,color:"#2d3436",fontWeight:700}}>Lv.{level} {WORDS[level].label}</div>
-          </div>
-          <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap",justifyContent:"center"}}>
-            {[{l:"XP",v:xp,col:"#ffd93d"},{l:"コンボ",v:combo,col:"#e17055"},{l:"せいかい",v:correct,col:"#6bcb77"},{l:"ミス",v:miss,col:"#ff7675"}].map(s=>(
-              <div key={s.l} style={{background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"4px 12px",textAlign:"center",minWidth:55}}>
-                <div style={{fontSize:10,color:"#636e72"}}>{s.l}</div>
-                <div style={{fontSize:18,fontWeight:900,color:s.col}}>{s.v}</div>
-              </div>))}
-          </div>
-          <div style={{width:"100%",maxWidth:310,height:16,borderRadius:10,background:"rgba(255,255,255,0.5)",overflow:"hidden",marginBottom:6,position:"relative"}}>
-            <div style={{height:"100%",borderRadius:10,background:"linear-gradient(90deg,#ffd93d,#e17055)",width:`${Math.min((xp/GACHA_COST)*100,100)}%`,transition:"width 0.3s"}}/>
-            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#2d3436"}}>{xp}/{GACHA_COST} XP</div>
-          </div>
-          <button onClick={doGacha} disabled={xp<GACHA_COST} style={{
-            padding:"8px 24px",fontSize:14,fontWeight:900,
-            background:xp>=GACHA_COST?"linear-gradient(135deg,#ffd93d,#e17055)":"rgba(200,200,200,0.5)",
-            color:xp>=GACHA_COST?"#fff":"#aaa",border:"none",borderRadius:30,cursor:xp>=GACHA_COST?"pointer":"default",
-            fontFamily:"inherit",marginBottom:10,animation:xp>=GACHA_COST?"pulse 1.5s infinite":"none",
-            boxShadow:xp>=GACHA_COST?"0 4px 12px rgba(225,112,85,0.4)":"none"}}>🎰 ガチャをまわす！</button>
-          {msg&&<div style={{fontSize:20,fontWeight:900,color:"#e17055",animation:"bounceIn 0.4s",marginBottom:4}}>{msg}</div>}
-          <div style={{background:"rgba(255,255,255,0.9)",borderRadius:18,padding:"16px 24px",marginBottom:10,textAlign:"center",
-            boxShadow:"0 4px 16px rgba(0,0,0,0.1)",minWidth:220,position:"relative",animation:sparkle?"shake 0.1s 2":undefined}}>
-            {sparkle&&<div style={{position:"absolute",top:-8,right:-8,fontSize:24,animation:"bounceIn 0.5s"}}>✨</div>}
-            <div style={{fontSize:11,color:"#b2bec3",marginBottom:6}}>つぎのもじをうとう！</div>
-            <div style={{fontSize:level===1?44:32,fontWeight:900,letterSpacing:level===1?0:5,display:"flex",justifyContent:"center",gap:3}}>
-              {word.split("").map((ch,i)=>(
-                <span key={i} style={{color:i<typed.length?"#6bcb77":i===typed.length?"#e17055":"#dfe6e9",
-                  textDecoration:i===typed.length?"underline":"none",textDecorationColor:"#e17055",textUnderlineOffset:5}}>{ch}</span>))}
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",minHeight:"100vh",
+          padding:"14px 12px 14px",animation:"fadeIn 0.3s"}}>
+
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+            width:"100%",maxWidth:520,marginBottom:10,gap:8}}>
+            <button className="nt-btn nt-btn-sub" onClick={()=>setScreen("title")}>← もどる</button>
+            <div style={{fontSize:14,color:T.textMain,fontWeight:900,
+              background:T.card,padding:"8px 14px",borderRadius:12,
+              boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+              Lv.{level}　{WORDS[level].label}
             </div>
           </div>
-          <div style={{background:"rgba(255,255,255,0.75)",borderRadius:14,padding:"10px 6px",maxWidth:400,width:"100%"}}>
-            {KB.map((row,ri)=>(
-              <div key={ri} style={{display:"flex",justifyContent:"center",gap:3,marginBottom:ri<2?3:0,paddingLeft:ri===1?14:ri===2?28:0}}>
-                {row.map(key=>{const isT=word[typed.length]===key;const isS=shakeKey===key;return(
-                  <div key={key} style={{width:34,height:34,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
-                    fontSize:14,fontWeight:700,background:isT?"linear-gradient(135deg,#e17055,#d63031)":"#f0f0f0",
-                    color:isT?"#fff":"#636e72",boxShadow:isT?"0 3px 8px rgba(225,112,85,0.5)":"0 2px 4px rgba(0,0,0,0.1)",
-                    animation:isS?"shake 0.1s 3":isT?"pulse 1s infinite":"none",transform:isT?"scale(1.1)":"scale(1)",fontFamily:"monospace"}}>{key}</div>
-                )})}</div>))}
-            <div style={{textAlign:"center",fontSize:10,color:"#b2bec3",marginTop:6}}>⬆ ひかっているキーをおしてね！</div>
+
+          <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",justifyContent:"center"}}>
+            {[
+              {l:"XP",v:xp,col:T.xp,dark:T.xpDark},
+              {l:"コンボ",v:combo,col:T.combo,dark:T.comboDark},
+              {l:"せいかい",v:correct,col:T.success,dark:T.successDark},
+              {l:"ミス",v:miss,col:T.error,dark:T.errorDark},
+            ].map(s=>(
+              <div key={s.l} style={{background:T.card,borderRadius:12,padding:"8px 14px",
+                textAlign:"center",minWidth:72,
+                boxShadow:`0 3px 0 ${s.dark}22, 0 4px 10px rgba(0,0,0,0.06)`,
+                borderTop:`3px solid ${s.col}`}}>
+                <div style={{fontSize:13,color:T.textSub,fontWeight:700}}>{s.l}</div>
+                <div style={{fontSize:26,fontWeight:900,color:s.col,lineHeight:1.1}}>{s.v}</div>
+              </div>
+            ))}
           </div>
-          {collection.length>0&&<div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center",maxWidth:360}}>
-            {collection.slice(-6).map(cat=><div key={cat.id} style={{animation:"float 3s ease-in-out infinite",animationDelay:`${cat.id*0.2}s`}}><CatFace cat={cat} size={28}/></div>)}
-            {collection.length>6&&<div style={{fontSize:10,color:"#636e72",display:"flex",alignItems:"center"}}>+{collection.length-6}</div>}
+
+          <div style={{width:"100%",maxWidth:360,height:22,borderRadius:12,
+            background:"#EEE",overflow:"hidden",marginBottom:8,position:"relative",
+            boxShadow:"inset 0 2px 4px rgba(0,0,0,0.1)"}}>
+            <div style={{height:"100%",borderRadius:12,
+              background:`linear-gradient(90deg,${T.xp},${T.primary})`,
+              width:`${Math.min((xp/GACHA_COST)*100,100)}%`,
+              transition:"width 0.3s"}}/>
+            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",
+              justifyContent:"center",fontSize:13,fontWeight:900,color:T.textMain}}>
+              {xp}/{GACHA_COST} XP
+            </div>
+          </div>
+
+          <button className="nt-btn nt-btn-xp"
+            onClick={doGacha} disabled={xp<GACHA_COST}
+            style={{marginBottom:14,animation:xp>=GACHA_COST?"pulse 1.5s infinite":"none"}}>
+            🎰 ガチャをまわす！
+          </button>
+
+          {/* 打つ文字カード + エフェクト（オーバーレイ） */}
+          <div style={{position:"relative",marginBottom:14}}>
+            <div className="nt-card" style={{
+              padding:"18px 28px",textAlign:"center",
+              width:360,maxWidth:"95vw",boxSizing:"border-box"}}>
+              <div style={{fontSize:13,color:T.textSub,marginBottom:8,fontWeight:700}}>
+                つぎのもじをうとう！
+              </div>
+              {/* ひらがな（Lv.1はなし） */}
+              {word && word.hira ? (
+                <div style={{
+                  fontSize:Math.round(wordCharSize*0.7),
+                  color:"#888",fontWeight:700,
+                  letterSpacing:6,lineHeight:1.1,marginBottom:4,
+                  fontFamily:"'Zen Maru Gothic',sans-serif"}}>
+                  {word.hira}
+                </div>
+              ) : null}
+              {/* ローマ字 */}
+              <div style={{fontSize:wordCharSize,fontWeight:900,
+                letterSpacing:level===1?0:8,display:"flex",
+                justifyContent:"center",alignItems:"center",gap:level===1?0:4,
+                fontFamily:"monospace",lineHeight:1.1,minHeight:wordCharSize*1.15}}>
+                {word && word.roma.split("").map((ch,i)=>{
+                  const isDone = i<typed.length;
+                  const isCur = i===typed.length;
+                  return(
+                    <span key={i} style={{
+                      color: isDone ? T.success : isCur ? T.primary : "#D0D0D0",
+                      fontWeight: isDone ? 900 : isCur ? 900 : 700,
+                      textDecoration: isCur ? "underline" : "none",
+                      textDecorationThickness: 4,
+                      textUnderlineOffset: 8,
+                      textDecorationColor: T.primary,
+                      display: "inline-block",
+                      animation: isCur ? "charBounce 0.8s ease-in-out infinite" : "none",
+                    }}>{ch}</span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 正解エフェクト（レイアウト非干渉） */}
+            <div aria-hidden style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"visible",zIndex:5}}>
+              {flashId>0 && <>
+                {/* カード全体の光フラッシュ */}
+                <div key={`flash-${flashId}`} style={{
+                  position:"absolute",inset:0,borderRadius:16,
+                  boxShadow:`0 0 30px 10px rgba(255,255,255,0.9), 0 0 70px 22px ${T.xp}88, 0 0 100px 30px ${T.primary}44`,
+                  animation:"cardFlash 0.35s ease-out forwards",
+                  opacity:0
+                }}/>
+                {/* +XP テキスト（右上、上へふわっと） */}
+                <div key={`xp-${flashId}`} style={{
+                  position:"absolute",top:-6,right:-10,
+                  padding:"8px 14px",
+                  background:`linear-gradient(135deg,${T.xp},${T.primary})`,
+                  color:"#fff",fontWeight:900,fontSize:22,
+                  borderRadius:14,whiteSpace:"nowrap",
+                  boxShadow:`0 4px 12px rgba(255,140,66,0.5)`,
+                  textShadow:"0 1px 2px rgba(0,0,0,0.2)",
+                  animation:"xpFloat 1s ease-out forwards",
+                  opacity:0
+                }}>+{flashData.xp} XP!</div>
+                {/* コンボ（5以上） */}
+                {flashData.combo>=5 && (
+                  <div key={`combo-${flashId}`} style={{
+                    position:"absolute",top:-34,left:"50%",
+                    padding:"6px 18px",
+                    background:T.combo,color:"#fff",
+                    fontWeight:900,fontSize:20,borderRadius:14,whiteSpace:"nowrap",
+                    boxShadow:`0 4px 0 ${T.comboDark}, 0 6px 14px rgba(255,105,180,0.45)`,
+                    animation:"comboPop 1s ease-out forwards",
+                    opacity:0
+                  }}>🔥 {flashData.combo} COMBO!</div>
+                )}
+                {/* キラキラ放射 */}
+                {Array.from({length:10}).map((_,i)=>{
+                  const angle = (i*36 + (flashId*13)%36) * Math.PI/180;
+                  const dist = 90 + (i%3)*12;
+                  const dx = Math.cos(angle)*dist;
+                  const dy = Math.sin(angle)*dist - 8;
+                  return(
+                    <span key={`spk-${flashId}-${i}`} style={{
+                      position:"absolute",left:"50%",top:"50%",
+                      fontSize:18,lineHeight:1,
+                      "--tx":`${dx}px`,"--ty":`${dy}px`,
+                      animation:`sparklePop 0.8s ${i*0.02}s ease-out forwards`,
+                      opacity:0
+                    }}>✨</span>
+                  );
+                })}
+              </>}
+            </div>
+          </div>
+
+          {/* キーボード */}
+          <div style={{background:T.card,borderRadius:16,padding:"12px 10px",
+            maxWidth:480,width:"100%",
+            boxShadow:"0 4px 14px rgba(0,0,0,0.08)"}}>
+            {KB.map((row,ri)=>(
+              <div key={ri} style={{display:"flex",justifyContent:"center",gap:6,
+                marginBottom:ri<2?6:0,paddingLeft:ri===1?20:ri===2?40:0}}>
+                {row.map(key=>{
+                  const isT = word && word.roma[typed.length]===key;
+                  const isS = shakeKey===key;
+                  const isF = flashKey===key;
+                  const bg = isS ? T.error : isF ? T.success : isT ? T.primary : T.keyBg;
+                  const col = (isS||isF||isT) ? "#FFF" : T.keyText;
+                  const shadowDark = isS ? T.errorDark : isF ? T.successDark : isT ? T.primaryDark : "#C0C0C0";
+                  return(
+                    <div key={key} style={{
+                      width:40,height:40,borderRadius:10,display:"flex",
+                      alignItems:"center",justifyContent:"center",
+                      fontSize:18,fontWeight:900,background:bg,color:col,
+                      fontFamily:"monospace",
+                      boxShadow: isT
+                        ? `0 4px 0 ${T.primaryDark}, 0 0 0 4px rgba(255,140,66,0.35), 0 6px 14px rgba(255,140,66,0.4)`
+                        : `0 3px 0 ${shadowDark}, 0 4px 6px rgba(0,0,0,0.08)`,
+                      animation: isS ? "keyShake 0.1s 3"
+                               : isT ? "keyPulse 1.1s infinite"
+                               : "none",
+                      transform: isT ? "scale(1.08)" : "scale(1)",
+                      transition: "background 0.1s, color 0.1s, transform 0.1s",
+                    }}>{key}</div>
+                  );
+                })}
+              </div>
+            ))}
+            <div style={{textAlign:"center",fontSize:13,color:T.textSub,marginTop:10,fontWeight:700}}>
+              ⬆ ひかっているキーをおしてね！
+            </div>
+          </div>
+
+          {collection.length>0&&<div style={{marginTop:14,display:"flex",gap:6,
+            flexWrap:"wrap",justifyContent:"center",maxWidth:360}}>
+            {collection.slice(-6).map(cat=>(
+              <div key={cat.id} style={{animation:"float 3s ease-in-out infinite",
+                animationDelay:`${cat.id*0.2}s`}}>
+                <CatFace cat={cat} size={32}/>
+              </div>
+            ))}
+            {collection.length>6&&<div style={{fontSize:13,color:T.textSub,
+              display:"flex",alignItems:"center",fontWeight:900}}>+{collection.length-6}</div>}
           </div>}
         </div>
       )}
 
       {/* ZUKAN */}
       {screen==="zukan"&&(
-        <div style={{minHeight:"100vh",padding:16,animation:"fadeIn 0.3s"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",maxWidth:460,margin:"0 auto 14px"}}>
-            <button onClick={()=>setScreen("title")} style={{padding:"6px 16px",fontSize:12,background:"rgba(255,255,255,0.7)",
-              border:"none",borderRadius:20,cursor:"pointer",fontFamily:"inherit",fontWeight:700,color:"#636e72"}}>← もどる</button>
-            <div style={{fontSize:16,fontWeight:900,color:"#2d3436"}}>📖 ねこずかん</div>
-            <div style={{fontSize:12,fontWeight:700,color:"#e17055"}}>{collection.length}/{CATS.length}</div>
+        <div style={{minHeight:"100vh",padding:"16px 14px 24px",animation:"fadeIn 0.3s",
+          backgroundImage:pawBg, backgroundSize:"140px 140px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+            maxWidth:640,margin:"0 auto 18px",gap:10}}>
+            <button className="nt-btn nt-btn-sub" onClick={()=>setScreen("title")}>← もどる</button>
+            <div style={{fontSize:22,fontWeight:900,color:T.textMain}}>📖 ねこずかん</div>
+            <div style={{fontSize:14,fontWeight:900,color:T.primary,
+              background:T.card,padding:"8px 14px",borderRadius:12,
+              boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+              {collection.length}/{CATS.length}
+            </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))",gap:6,maxWidth:460,margin:"0 auto"}}>
-            {CATS.map(cat=>{const owned=collection.find(c=>c.id===cat.id);return(
-              <div key={cat.id} style={{background:owned?"rgba(255,255,255,0.9)":"rgba(200,200,200,0.3)",
-                borderRadius:12,padding:8,textAlign:"center",opacity:owned?1:0.4,
-                boxShadow:owned?"0 2px 8px rgba(0,0,0,0.08)":"none"}}>
-                {owned?<><CatFace cat={cat} size={40}/><div style={{fontSize:9,fontWeight:900,color:"#2d3436",marginTop:3,lineHeight:1.2}}>{cat.name}</div><div style={{fontSize:8,color:"#e17055"}}>{cat.r}</div></>
-                :<><div style={{fontSize:28,opacity:0.3}}>❓</div><div style={{fontSize:9,fontWeight:700,color:"#b2bec3",marginTop:3}}>？？？</div><div style={{fontSize:8,color:"#dfe6e9"}}>{cat.r}</div></>}
-              </div>);})}
+
+          <div style={{maxWidth:640,margin:"0 auto",display:"flex",flexDirection:"column",gap:20}}>
+            {RARITY_ORDER.map(r=>{
+              const rare = RARITY[r];
+              const cats = catsByRarity[r];
+              const ownedN = ownedByRarity[r];
+              const shimmer = rare.glow;
+              return(
+                <div key={r}>
+                  <div style={{
+                    display:"flex",alignItems:"center",gap:12,
+                    background:rare.color,
+                    borderRadius:12,padding:"10px 16px",marginBottom:10,
+                    boxShadow:`0 4px 0 ${rare.dark}, 0 6px 14px rgba(0,0,0,0.1)`,
+                  }}>
+                    <span style={{fontSize:20,fontWeight:900,color:"#fff",
+                      letterSpacing:1, textShadow:`0 2px 0 ${rare.dark}`}}>
+                      {r}
+                    </span>
+                    <span style={{fontSize:18,fontWeight:900,color:"#fff",
+                      textShadow:`0 2px 0 ${rare.dark}`}}>
+                      {rare.label}
+                    </span>
+                    <span style={{marginLeft:"auto",fontSize:16,fontWeight:900,
+                      color:"#fff",background:rare.dark,
+                      padding:"4px 12px",borderRadius:12}}>
+                      {ownedN}/{cats.length}
+                    </span>
+                  </div>
+                  <div style={{display:"grid",
+                    gridTemplateColumns:"repeat(auto-fill,minmax(104px,1fr))",gap:10}}>
+                    {cats.map(cat=>{
+                      const owned = collection.find(c=>c.id===cat.id);
+                      return(
+                        <div key={cat.id} className={owned&&shimmer?"nt-shimmer":""} style={{
+                          background: owned ? T.card : "#F2F2F2",
+                          borderRadius:12,padding:"10px 6px",textAlign:"center",
+                          border:`3px solid ${owned?rare.color:"#DDD"}`,
+                          opacity:owned?1:0.55,
+                          boxShadow: owned
+                            ? `0 3px 0 ${rare.dark}33, 0 4px 10px rgba(0,0,0,0.08)`
+                            : "none",
+                        }}>
+                          {owned?(<>
+                            <CatFace cat={cat} size={48}/>
+                            <div style={{fontSize:12,fontWeight:900,color:T.textMain,
+                              marginTop:6,lineHeight:1.25,minHeight:30}}>{cat.name}</div>
+                            <div style={{fontSize:13,fontWeight:900,color:rare.dark,marginTop:2}}>{cat.r}</div>
+                          </>):(<>
+                            <div style={{fontSize:36,opacity:0.35,lineHeight:1}}>❓</div>
+                            <div style={{fontSize:12,fontWeight:900,color:"#AAA",marginTop:10}}>？？？</div>
+                            <div style={{fontSize:13,fontWeight:900,color:"#BBB",marginTop:2}}>{cat.r}</div>
+                          </>)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
