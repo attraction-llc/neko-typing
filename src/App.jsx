@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 // ===== STORAGE HELPERS =====
 const NS = "nekoTyping_v1_";
-const STORAGE_KEYS = ["level","xp","totalXp","collection","correct","miss"];
+const STORAGE_KEYS = ["level","xp","totalXp","collection","correct","miss","lastHouseTier"];
 const saveToStorage = (key, value) => {
   try { localStorage.setItem(NS + key, JSON.stringify(value)); } catch {}
 };
@@ -157,13 +157,65 @@ const WORDS = {
 const KB = [["q","w","e","r","t","y","u","i","o","p"],["a","s","d","f","g","h","j","k","l"],["z","x","c","v","b","n","m"]];
 const GACHA_COST = 50;
 const HOUSES = [
-  { name:"ダンボールハウス", need:0, bg:"#d2b48c", fl:"#c4a06a", items:[] },
-  { name:"ちいさなおへや", need:5, bg:"#f5e6d0", fl:"#deb887", items:["rug"] },
-  { name:"ねこカフェ", need:15, bg:"#fff0e0", fl:"#e8c8a0", items:["rug","shelf","plant"] },
-  { name:"ねこごてん", need:30, bg:"#fdf0e8", fl:"#d4a87a", items:["rug","shelf","plant","tower","sofa"] },
-  { name:"ねこじょう", need:50, bg:"#f8f0ff", fl:"#c8a8d8", items:["rug","shelf","plant","tower","sofa","chandelier","fountain"] },
+  { tier:1, name:"ダンボールハウス", need:0  },
+  { tier:2, name:"ちいさなおへや",   need:5  },
+  { tier:3, name:"ねこカフェ",       need:15 },
+  { tier:4, name:"ねこごてん",       need:30 },
+  { tier:5, name:"ねこじょう",       need:50 },
 ];
 function getHouse(n){ let h=HOUSES[0]; for(const x of HOUSES){if(n>=x.need)h=x;} return h; }
+
+// Per-tier room bounds (for cat roaming) and furniture perches in viewBox 0 0 400 280.
+// minRarity: a cat can claim this perch only if its rarity rank >= this value.
+const HOUSE_LAYOUTS = {
+  1: {
+    bounds: { xMin:120, xMax:280, floorTop:228, floorBot:250 },
+    perches: [],
+  },
+  2: {
+    bounds: { xMin:50, xMax:360, floorTop:218, floorBot:258 },
+    perches: [
+      { x:125, y:218, minRarity:0 }, // cushion
+      { x:245, y:244, minRarity:0 }, // near water bowl
+    ],
+  },
+  3: {
+    bounds: { xMin:60, xMax:340, floorTop:210, floorBot:258 },
+    perches: [
+      { x:338, y: 50, minRarity:3 }, // tower top
+      { x:338, y: 90, minRarity:1 }, // tower mid
+      { x:150, y:182, minRarity:0 }, // sofa left
+      { x:200, y:182, minRarity:0 }, // sofa right
+      { x: 75, y:118, minRarity:2 }, // bookshelf top
+      { x:280, y:200, minRarity:1 }, // near tunnel
+    ],
+  },
+  4: {
+    bounds: { xMin:40, xMax:300, floorTop:198, floorBot:258 },
+    perches: [
+      { x:340, y: 40, minRarity:4 }, // tower top
+      { x:340, y: 88, minRarity:2 }, // tower mid
+      { x:340, y:130, minRarity:1 }, // tower low
+      { x:140, y:190, minRarity:0 }, // velvet sofa
+      { x:200, y:190, minRarity:0 },
+      { x: 60, y:188, minRarity:2 }, // piano top
+      { x:274, y:160, minRarity:1 }, // hammock
+    ],
+  },
+  5: {
+    bounds: { xMin:45, xMax:360, floorTop:190, floorBot:250 },
+    perches: [
+      { x:345, y: 38, minRarity:4 }, // castle tower top
+      { x:345, y: 80, minRarity:3 },
+      { x:345, y:122, minRarity:2 },
+      { x:345, y:164, minRarity:1 },
+      { x:200, y:158, minRarity:4 }, // throne
+      { x:115, y:218, minRarity:0 }, // sofa L
+      { x:285, y:218, minRarity:0 }, // sofa R
+      { x: 55, y:138, minRarity:1 }, // pillar base
+    ],
+  },
+};
 
 // ===== SOUND (Web Audio API) =====
 function useSound(enabled) {
@@ -297,10 +349,14 @@ function CatFace({ cat, size=64 }) {
 
 // ===== HOUSE CONSTANTS =====
 const ACTIONS = ["idle","sleep","play","walk","groom","chase","sit","stretch"];
+const PERCH_ACTIONS = ["idle","sleep","sit","groom","stretch"];
 const EMOTIONS = ["💕","😴","✨","🐟","❓","🎵"];
 const MEOWS = ["にゃー！","にゃ〜ん","みゃお","ごろごろ","ぷるる"];
-const FLOOR_TOP = 138, FLOOR_BOT = 188, X_MIN = 18, X_MAX = 282;
-const pickAction = () => ACTIONS[Math.floor(Math.random()*ACTIONS.length)];
+const RARITY_RANK = { "★":0, "★★":1, "★★★":2, "★★★★":3, "★★★★★":4 };
+const pickAction = (onPerch=false) => {
+  const pool = onPerch ? PERCH_ACTIONS : ACTIONS;
+  return pool[Math.floor(Math.random()*pool.length)];
+};
 const pickEmotion = () => EMOTIONS[Math.floor(Math.random()*EMOTIONS.length)];
 const pickMeow = () => MEOWS[Math.floor(Math.random()*MEOWS.length)];
 const getTimeMode = (d=new Date()) => { const h=d.getHours(); return h>=6&&h<17?"day":h<19?"sunset":"night"; };
@@ -370,62 +426,734 @@ function MiniCat({ state, tick, onClick }) {
   );
 }
 
+// ===== TIER SCENES =====
+// Shared sky rendering inside a window rect (viewBox coords)
+function SkyWindow({ mode, x, y, w, h, rx=2, frame="#8a6038", frameW=3 }) {
+  const cx = x + w/2, cy = y + h/2;
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={rx}
+        fill={mode==="day"?"url(#skyDay)":mode==="sunset"?"url(#skySunset)":"url(#skyNight)"}/>
+      {mode==="day" && <>
+        <circle cx={x+w*0.72} cy={y+h*0.28} r={Math.min(w,h)*0.11} fill="#ffd93d"/>
+        <ellipse cx={x+w*0.25} cy={y+h*0.4} rx={w*0.13} ry={h*0.05} fill="#fff" opacity="0.85"/>
+        <ellipse cx={x+w*0.55} cy={y+h*0.6} rx={w*0.1} ry={h*0.04} fill="#fff" opacity="0.7"/>
+      </>}
+      {mode==="sunset" && <>
+        <circle cx={cx} cy={y+h*0.62} r={Math.min(w,h)*0.14} fill="#ffe0a0"/>
+        <ellipse cx={cx} cy={y+h*0.7} rx={w*0.3} ry={h*0.04} fill="#ffb070" opacity="0.4"/>
+      </>}
+      {mode==="night" && <>
+        <circle cx={x+w*0.74} cy={y+h*0.3} r={Math.min(w,h)*0.09} fill="#fffacd"/>
+        <circle cx={x+w*0.72} cy={y+h*0.28} r={Math.min(w,h)*0.06} fill="#2a2a5a"/>
+        {[[0.2,0.22],[0.35,0.55],[0.3,0.75],[0.55,0.3],[0.85,0.62]].map(([fx,fy],i)=>(
+          <circle key={i} cx={x+w*fx} cy={y+h*fy} r="0.7" fill="#fff">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur={`${1.5+i*0.3}s`} repeatCount="indefinite"/>
+          </circle>
+        ))}
+      </>}
+      {frame && <rect x={x} y={y} width={w} height={h} rx={rx} fill="none" stroke={frame} strokeWidth={frameW}/>}
+    </g>
+  );
+}
+
+function HouseTier1({ timeMode }) {
+  return (
+    <g>
+      <rect x="0" y="0" width="400" height="280" fill="#8a7f6a"/>
+      <rect x="0" y="255" width="400" height="25" fill="#5a4a34"/>
+      <rect x="100" y="60" width="200" height="200" fill="#C4A06A"/>
+      <rect x="100" y="60" width="200" height="10" fill="#9a7a48" opacity="0.5"/>
+      {Array.from({length:20}).map((_,i)=>(
+        <line key={i} x1="100" y1={72+i*9} x2="300" y2={72+i*9} stroke="#a8875a" strokeWidth="0.7"/>
+      ))}
+      <rect x="100" y="60" width="200" height="200" fill="none" stroke="#8a6838" strokeWidth="2"/>
+      <rect x="100" y="60" width="14" height="200" fill="#a8875a" opacity="0.35"/>
+      <polygon points="100,60 175,44 225,44 300,60" fill="#D0B07A"/>
+      <line x1="200" y1="44" x2="200" y2="60" stroke="#8a6838" strokeWidth="1.2"/>
+      <rect x="160" y="55" width="80" height="4" fill="#d8b888" opacity="0.7"/>
+      <circle cx="200" cy="115" r="22" fill={timeMode==="day"?"#87ceeb":timeMode==="sunset"?"#ffa070":"#0e0e28"}/>
+      <circle cx="200" cy="115" r="22" fill="none" stroke="#6a4a20" strokeWidth="2.5"/>
+      {timeMode==="day" && <circle cx="208" cy="107" r="4" fill="#ffd93d"/>}
+      {timeMode==="sunset" && <circle cx="200" cy="118" r="5" fill="#ffe0a0"/>}
+      {timeMode==="night" && <>
+        <circle cx="208" cy="108" r="3" fill="#fffacd"/>
+        <circle cx="192" cy="120" r="0.5" fill="#fff"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.8s" repeatCount="indefinite"/></circle>
+      </>}
+      <rect x="100" y="232" width="200" height="28" fill="#5a4030"/>
+      <line x1="100" y1="232" x2="300" y2="232" stroke="#3a2a20" strokeWidth="1"/>
+      <circle cx="135" cy="246" r="1.2" fill="#3a2820"/>
+      <circle cx="260" cy="252" r="1" fill="#3a2820"/>
+      <circle cx="185" cy="254" r="0.8" fill="#3a2820"/>
+      <g transform="translate(150 243) rotate(-6)">
+        <rect width="60" height="17" fill="#ede4cc"/>
+        <rect width="60" height="3" fill="#d0c0a0"/>
+        <line x1="3" y1="8" x2="57" y2="8" stroke="#888" strokeWidth="0.3"/>
+        <line x1="3" y1="12" x2="57" y2="12" stroke="#888" strokeWidth="0.3"/>
+      </g>
+    </g>
+  );
+}
+
+function HouseTier2({ timeMode }) {
+  return (
+    <g>
+      <rect x="0" y="0" width="400" height="220" fill="#FFF5E6"/>
+      {Array.from({length:5}).map((_,i)=>(
+        <line key={i} x1="0" y1={36+i*34} x2="400" y2={36+i*34} stroke="#efe0c2" strokeWidth="0.6"/>
+      ))}
+      <rect x="0" y="220" width="400" height="60" fill="#DEB887"/>
+      <line x1="0" y1="220" x2="400" y2="220" stroke="#a67848" strokeWidth="1.5"/>
+      {Array.from({length:9}).map((_,i)=>(
+        <line key={i} x1={i*45} y1="220" x2={i*45+12} y2="280" stroke="#b89668" strokeWidth="0.8"/>
+      ))}
+      <SkyWindow mode={timeMode} x={260} y={50} w={90} h={80} frame="#a0784a"/>
+      <line x1="305" y1="50" x2="305" y2="130" stroke="#a0784a" strokeWidth="2"/>
+      <line x1="260" y1="90" x2="350" y2="90" stroke="#a0784a" strokeWidth="2"/>
+      <rect x="254" y="44" width="104" height="5" fill="#a07858" rx="2"/>
+      <path d="M 255 49 Q 263 88 255 132 L 274 132 Q 269 88 274 49 Z" fill="#f5a0b8" opacity="0.9"/>
+      <path d="M 344 49 Q 352 88 344 132 L 363 132 Q 358 88 363 49 Z" fill="#f5a0b8" opacity="0.9"/>
+      {/* rug */}
+      <ellipse cx="200" cy="250" rx="95" ry="14" fill="#c08090" opacity="0.45"/>
+      <ellipse cx="200" cy="250" rx="78" ry="10" fill="#e8b8c8" opacity="0.4"/>
+      {/* cushion */}
+      <ellipse cx="125" cy="236" rx="24" ry="7" fill="#8b7060"/>
+      <ellipse cx="125" cy="233" rx="22" ry="6" fill="#a89078"/>
+      <ellipse cx="125" cy="232" rx="12" ry="2.5" fill="#c0a890" opacity="0.6"/>
+      {/* water bowl */}
+      <ellipse cx="245" cy="252" rx="15" ry="5" fill="#708090"/>
+      <ellipse cx="245" cy="251" rx="13" ry="4" fill="#8acde0"/>
+      <ellipse cx="245" cy="250" rx="6" ry="1.5" fill="#c8e8f5" opacity="0.8"/>
+      {/* tiny picture */}
+      <rect x="30" y="60" width="30" height="24" fill="#fff" stroke="#8a6038" strokeWidth="1.5"/>
+      <circle cx="45" cy="72" r="5" fill="#ffd070"/>
+    </g>
+  );
+}
+
+function HouseTier3({ timeMode }) {
+  return (
+    <g>
+      {/* back wall */}
+      <rect x="0" y="0" width="400" height="210" fill="#FFF0E0"/>
+      {/* brick accent wall (left) */}
+      <rect x="0" y="0" width="60" height="210" fill="#c89888"/>
+      {Array.from({length:14}).map((_,row)=>(
+        Array.from({length:4}).map((__,col)=>{
+          const off = row%2===0 ? 0 : 16;
+          return <rect key={`${row}-${col}`} x={col*17-off} y={row*15} width="15" height="13"
+            fill={(row+col)%3===0?"#d8a898":"#c89080"} stroke="#a06858" strokeWidth="0.5"/>;
+        })
+      ))}
+      {/* wood floor with chevron hints */}
+      <rect x="0" y="210" width="400" height="70" fill="#c89468"/>
+      {Array.from({length:9}).map((_,i)=>(
+        <g key={i}>
+          <polyline points={`${i*45},212 ${i*45+22},232 ${i*45+45},212`} fill="none" stroke="#9a6a40" strokeWidth="0.7"/>
+          <polyline points={`${i*45},252 ${i*45+22},272 ${i*45+45},252`} fill="none" stroke="#9a6a40" strokeWidth="0.7"/>
+        </g>
+      ))}
+      <line x1="0" y1="210" x2="400" y2="210" stroke="#8a5a38" strokeWidth="1.5"/>
+      {/* 2 windows */}
+      <SkyWindow mode={timeMode} x={140} y={38} w={72} h={78} frame="#8a6038"/>
+      <line x1="176" y1="38" x2="176" y2="116" stroke="#8a6038" strokeWidth="2"/>
+      <line x1="140" y1="77" x2="212" y2="77" stroke="#8a6038" strokeWidth="2"/>
+      <SkyWindow mode={timeMode} x={230} y={38} w={72} h={78} frame="#8a6038"/>
+      <line x1="266" y1="38" x2="266" y2="116" stroke="#8a6038" strokeWidth="2"/>
+      <line x1="230" y1="77" x2="302" y2="77" stroke="#8a6038" strokeWidth="2"/>
+      {/* flower pot on sill */}
+      <rect x="182" y="116" width="18" height="12" fill="#b87050" rx="1"/>
+      <circle cx="184" cy="111" r="4" fill="#ff9cb0"/>
+      <circle cx="191" cy="109" r="4" fill="#fff080"/>
+      <circle cx="198" cy="112" r="3.5" fill="#ff9cb0"/>
+      {/* pendant light */}
+      <line x1="330" y1="0" x2="330" y2="18" stroke="#5a4030" strokeWidth="1"/>
+      <path d="M 315 18 L 345 18 L 340 34 L 320 34 Z" fill="#e8c06a"/>
+      <ellipse cx="330" cy="36" rx="14" ry="4" fill="#fff8c0" opacity="0.55">
+        <animate attributeName="opacity" values="0.4;0.7;0.4" dur="3.2s" repeatCount="indefinite"/>
+      </ellipse>
+      {/* wall clock */}
+      <circle cx="368" cy="60" r="14" fill="#fff" stroke="#6a4a30" strokeWidth="2"/>
+      <line x1="368" y1="60" x2="368" y2="49" stroke="#333" strokeWidth="1.5"/>
+      <line x1="368" y1="60" x2="376" y2="65" stroke="#333" strokeWidth="1"/>
+      <circle cx="368" cy="60" r="1.5" fill="#333"/>
+      {/* wall framed picture */}
+      <rect x="78" y="30" width="40" height="32" fill="#fff" stroke="#8a6038" strokeWidth="2"/>
+      <rect x="82" y="34" width="32" height="24" fill="#b0d8a8"/>
+      <polygon points="82,58 94,42 101,52 109,38 114,58" fill="#6a9a5a"/>
+      <circle cx="104" cy="42" r="3" fill="#ffd050"/>
+      {/* cat tower (2 levels) */}
+      <rect x="320" y="120" width="38" height="88" fill="#d8b080" rx="2"/>
+      <rect x="325" y="124" width="28" height="4" fill="#a87838" rx="2"/>
+      <rect x="310" y="58" width="56" height="12" fill="#b88848" rx="4"/>
+      <rect x="310" y="100" width="56" height="12" fill="#b88848" rx="4"/>
+      <circle cx="336" cy="72" r="4" fill="#ff9cb0"/>
+      {/* sofa */}
+      <rect x="110" y="168" width="120" height="38" fill="#d87878" rx="6"/>
+      <rect x="110" y="168" width="120" height="10" fill="#e89090" rx="6"/>
+      <rect x="105" y="163" width="16" height="48" fill="#b85858" rx="5"/>
+      <rect x="220" y="163" width="16" height="48" fill="#b85858" rx="5"/>
+      <circle cx="140" cy="180" r="7" fill="#f0a0b0"/>
+      <circle cx="205" cy="180" r="7" fill="#f0a0b0"/>
+      {/* bookshelf */}
+      <rect x="58" y="128" width="46" height="72" fill="#8a6038" rx="1"/>
+      <rect x="61" y="132" width="40" height="3" fill="#6a4028"/>
+      <rect x="61" y="160" width="40" height="3" fill="#6a4028"/>
+      <rect x="61" y="188" width="40" height="3" fill="#6a4028"/>
+      {[[63,138,"#d85858"],[69,138,"#58a8d8"],[75,138,"#d8c858"],[81,138,"#8ad878"],[90,138,"#b878d8"]].map(([x,y,c],i)=>(
+        <rect key={i} x={x} y={y} width="5" height="20" fill={c}/>
+      ))}
+      {[[63,166,"#58a8d8"],[69,166,"#d8c858"],[78,166,"#d85858"],[88,166,"#8ad878"]].map(([x,y,c],i)=>(
+        <rect key={`b2-${i}`} x={x} y={y} width="5" height="20" fill={c}/>
+      ))}
+      {/* cat tunnel */}
+      <path d="M 245 212 Q 245 174 285 174 Q 325 174 325 212 Z" fill="#b878d8" opacity="0.88"/>
+      <ellipse cx="245" cy="212" rx="7" ry="14" fill="#5a4068"/>
+      <ellipse cx="325" cy="212" rx="7" ry="14" fill="#5a4068"/>
+      {/* coffee table + cup */}
+      <rect x="118" y="220" width="70" height="6" fill="#8a5a38" rx="2"/>
+      <rect x="122" y="226" width="3" height="16" fill="#6a4028"/>
+      <rect x="181" y="226" width="3" height="16" fill="#6a4028"/>
+      <rect x="145" y="210" width="10" height="10" fill="#fff" stroke="#c88" strokeWidth="0.8" rx="1"/>
+      <rect x="155" y="213" width="3" height="4" fill="#fff" stroke="#c88" strokeWidth="0.6"/>
+      <path d="M 150 209 Q 150 205 152 204" stroke="#ccc" strokeWidth="0.6" fill="none" opacity="0.6"/>
+      {/* plants */}
+      <rect x="12" y="222" width="26" height="28" fill="#9a6830" rx="2"/>
+      <circle cx="18" cy="212" r="10" fill="#6aaa5a"/>
+      <circle cx="28" cy="210" r="8" fill="#7abb6a"/>
+      <circle cx="24" cy="204" r="7" fill="#5a9a4a"/>
+      <rect x="365" y="228" width="26" height="28" fill="#9a6830" rx="2"/>
+      <circle cx="371" cy="222" r="4" fill="#7abb6a"/>
+      <circle cx="381" cy="220" r="4" fill="#5a9a4a"/>
+      <circle cx="388" cy="224" r="3.5" fill="#7abb6a"/>
+    </g>
+  );
+}
+
+function HouseTier4({ timeMode }) {
+  return (
+    <g>
+      {/* wall: pale gold w/ vertical stripes */}
+      <rect x="0" y="0" width="400" height="198" fill="#FDF5E6"/>
+      {Array.from({length:20}).map((_,i)=>(
+        <rect key={i} x={i*20} y="0" width="4" height="198" fill="#f0e2cc" opacity="0.55"/>
+      ))}
+      {/* ceiling molding */}
+      <rect x="0" y="0" width="400" height="14" fill="#e8d49a"/>
+      <rect x="0" y="14" width="400" height="4" fill="#d8b85a"/>
+      {Array.from({length:16}).map((_,i)=>(
+        <rect key={i} x={i*25+6} y="2" width="12" height="10" fill="none" stroke="#c8a850" strokeWidth="0.8" rx="1"/>
+      ))}
+      {/* marble checkerboard floor */}
+      <rect x="0" y="198" width="400" height="82" fill="#eceef0"/>
+      {Array.from({length:10}).map((_,col)=>(
+        Array.from({length:3}).map((__,row)=>{
+          const dark = (col+row)%2===0;
+          return <rect key={`${col}-${row}`} x={col*40} y={198+row*28} width="40" height="28"
+            fill={dark?"#d8dadc":"#f4f6f8"}/>;
+        })
+      ))}
+      <line x1="0" y1="198" x2="400" y2="198" stroke="#a0a4a8" strokeWidth="1.5"/>
+
+      {/* 2 arch stained-glass windows */}
+      {[70, 230].map((wx,i)=>(
+        <g key={i}>
+          <path d={`M ${wx} 116 L ${wx} 60 Q ${wx+36} 28 ${wx+72} 60 L ${wx+72} 116 Z`}
+            fill={timeMode==="day"?"#b8d8f0":timeMode==="night"?"#2a2a5a":"#ffb080"}/>
+          <path d={`M ${wx} 116 L ${wx} 60 Q ${wx+36} 28 ${wx+72} 60 L ${wx+72} 116 Z`}
+            fill="none" stroke="#8a6830" strokeWidth="3.5"/>
+          <path d={`M ${wx+36} 116 L ${wx+36} 28`} stroke="#8a6830" strokeWidth="1.5"/>
+          <path d={`M ${wx} 82 L ${wx+72} 82`} stroke="#8a6830" strokeWidth="1.5"/>
+          <circle cx={wx+36} cy={64} r="9" fill="#d86888" opacity="0.8">
+            <animate attributeName="opacity" values="0.55;0.95;0.55" dur="3s" repeatCount="indefinite" begin={`${i*0.5}s`}/>
+          </circle>
+          <circle cx={wx+18} cy={96} r="6" fill="#68b8d8" opacity="0.7"/>
+          <circle cx={wx+54} cy={96} r="6" fill="#b8d868" opacity="0.7"/>
+        </g>
+      ))}
+
+      {/* chandelier */}
+      <line x1="200" y1="18" x2="200" y2="30" stroke="#8a6828" strokeWidth="1.5"/>
+      <ellipse cx="200" cy="34" rx="28" ry="6" fill="none" stroke="#c8a048" strokeWidth="2"/>
+      <ellipse cx="200" cy="34" rx="20" ry="4" fill="none" stroke="#c8a048" strokeWidth="1.5"/>
+      {[-20,-10,0,10,20].map((dx,i)=>(
+        <g key={i}>
+          <line x1={200+dx} y1="34" x2={200+dx} y2="42" stroke="#c8a048" strokeWidth="1"/>
+          <circle cx={200+dx} cy={44} r="2" fill="#ffd93d">
+            <animate attributeName="opacity" values="0.5;1;0.5" dur={`${1.6+i*0.2}s`} repeatCount="indefinite"/>
+          </circle>
+          <circle cx={200+dx} cy={44} r="5" fill="#fff8c0" opacity="0.3">
+            <animate attributeName="opacity" values="0.15;0.5;0.15" dur={`${1.6+i*0.2}s`} repeatCount="indefinite"/>
+          </circle>
+        </g>
+      ))}
+
+      {/* 3 paintings (top wall) */}
+      <rect x="148" y="38" width="32" height="26" fill="#fff" stroke="#a8792a" strokeWidth="2"/>
+      <rect x="151" y="41" width="26" height="20" fill="#b08858"/>
+      <circle cx="164" cy="50" r="5" fill="#ffe0c0"/>
+      <rect x="188" y="40" width="28" height="22" fill="#fff" stroke="#a8792a" strokeWidth="2"/>
+      <rect x="191" y="43" width="22" height="16" fill="#6a9acd"/>
+      <polygon points="191,59 198,49 204,54 213,44 213,59" fill="#3a6a8d"/>
+      <rect x="220" y="38" width="32" height="26" fill="#fff" stroke="#a8792a" strokeWidth="2"/>
+      <rect x="223" y="41" width="26" height="20" fill="#e8c06a"/>
+      <circle cx="236" cy="51" r="5" fill="#fff"/>
+
+      {/* fireplace */}
+      <g>
+        <rect x="300" y="135" width="80" height="60" fill="#8a6848"/>
+        <rect x="296" y="130" width="88" height="10" fill="#b88858" rx="2"/>
+        <rect x="308" y="146" width="64" height="44" fill="#2a1010"/>
+        <path fill="#ff7030">
+          <animate attributeName="d" dur="0.8s" repeatCount="indefinite"
+            values="M 324 188 Q 318 170 330 160 Q 338 172 346 158 Q 358 170 354 188 Z;
+                    M 322 188 Q 316 166 330 156 Q 340 170 350 154 Q 360 168 356 188 Z;
+                    M 324 188 Q 318 170 330 160 Q 338 172 346 158 Q 358 170 354 188 Z"/>
+        </path>
+        <path fill="#ffd040">
+          <animate attributeName="d" dur="0.5s" repeatCount="indefinite"
+            values="M 330 188 Q 328 176 336 168 Q 344 176 348 170 Q 352 180 346 188 Z;
+                    M 330 188 Q 326 174 338 166 Q 344 176 350 168 Q 354 180 344 188 Z;
+                    M 330 188 Q 328 176 336 168 Q 344 176 348 170 Q 352 180 346 188 Z"/>
+        </path>
+        <circle cx="340" cy="180" r="4" fill="#fff8a0" opacity="0.6">
+          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="0.6s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+
+      {/* grand piano */}
+      <ellipse cx="60" cy="215" rx="38" ry="10" fill="#1a1a1a"/>
+      <rect x="30" y="200" width="60" height="10" fill="#0a0a0a" rx="1"/>
+      <rect x="38" y="210" width="44" height="3" fill="#fff"/>
+      {Array.from({length:11}).map((_,i)=>(
+        <line key={i} x1={40+i*4} y1="210" x2={40+i*4} y2="213" stroke="#333" strokeWidth="0.4"/>
+      ))}
+      <polygon points="30,200 30,188 48,188 58,200" fill="#1a1a1a"/>
+      <rect x="38" y="215" width="4" height="22" fill="#1a1a1a"/>
+      <rect x="80" y="215" width="4" height="22" fill="#1a1a1a"/>
+
+      {/* big cat tower (3 levels) */}
+      <rect x="322" y="150" width="38" height="65" fill="#e0b888" rx="2"/>
+      {[48, 96, 140].map((y,i)=>(
+        <g key={i}>
+          <rect x="310" y={y} width="60" height="12" fill="#b88848" rx="4"/>
+          <rect x="314" y={y+2} width="52" height="8" fill="#d8a868" rx="3"/>
+          {i===0 && <ellipse cx="340" cy={y-2} rx="18" ry="4" fill="#d85878"/>}
+        </g>
+      ))}
+      <rect x="335" y="60" width="10" height="90" fill="#b88848"/>
+
+      {/* red velvet sofa */}
+      <rect x="100" y="180" width="140" height="42" fill="#a82828" rx="8"/>
+      <rect x="100" y="180" width="140" height="12" fill="#c84048" rx="6"/>
+      <rect x="94" y="173" width="16" height="55" fill="#882020" rx="5"/>
+      <rect x="230" y="173" width="16" height="55" fill="#882020" rx="5"/>
+      <circle cx="135" cy="196" r="7" fill="#e85070"/>
+      <circle cx="205" cy="196" r="7" fill="#e85070"/>
+
+      {/* hammock */}
+      <line x1="250" y1="130" x2="258" y2="148" stroke="#6a4028" strokeWidth="1.2"/>
+      <line x1="298" y1="130" x2="290" y2="148" stroke="#6a4028" strokeWidth="1.2"/>
+      <path d="M 258 148 Q 274 188 290 148" fill="#88b8c8" stroke="#5a8898" strokeWidth="1"/>
+      <path d="M 258 148 Q 274 180 290 148" fill="none" stroke="#5a8898" strokeWidth="0.5"/>
+
+      {/* aquarium */}
+      <g>
+        <rect x="8" y="210" width="56" height="38" fill="#68c0d8" opacity="0.75" stroke="#5a4030" strokeWidth="2"/>
+        <rect x="8" y="210" width="56" height="4" fill="#5a4030"/>
+        <rect x="8" y="244" width="56" height="4" fill="#5a4030"/>
+        <circle cx="20" cy="235" r="1.2" fill="#fff" opacity="0.8">
+          <animate attributeName="cy" values="244;215;215" dur="2.4s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.8;0.8;0" dur="2.4s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="30" cy="240" r="1" fill="#fff" opacity="0.8">
+          <animate attributeName="cy" values="244;215;215" dur="2.8s" repeatCount="indefinite" begin="0.8s"/>
+          <animate attributeName="opacity" values="0.8;0.8;0" dur="2.8s" repeatCount="indefinite" begin="0.8s"/>
+        </circle>
+        <ellipse cx="30" cy="228" rx="4" ry="2" fill="#ff8040">
+          <animate attributeName="cx" values="14;58;58;14;14" dur="8s" repeatCount="indefinite"/>
+        </ellipse>
+        <ellipse cx="45" cy="235" rx="3" ry="1.5" fill="#ffd860">
+          <animate attributeName="cx" values="58;14;14;58;58" dur="9s" repeatCount="indefinite"/>
+        </ellipse>
+        <path d="M 50 248 Q 48 238 52 228 Q 54 222 50 216" stroke="#2a8a4a" strokeWidth="2" fill="none"/>
+      </g>
+
+      {/* small scattered toys (ball of yarn) */}
+      <g transform="translate(270 228)">
+        <circle r="5" fill="#f48fb1"/>
+        <path d="M -4 -2 Q 0 0 4 -2 M -4 2 Q 0 4 4 2" stroke="#c86a90" strokeWidth="0.6" fill="none"/>
+      </g>
+    </g>
+  );
+}
+
+function HouseTier5({ timeMode }) {
+  return (
+    <g>
+      {/* royal gradient wall */}
+      <rect x="0" y="0" width="400" height="185" fill="url(#royalWall)"/>
+      {/* stone masonry pattern */}
+      {Array.from({length:11}).map((_,row)=>{
+        const off = row%2===0 ? 0 : 30;
+        return Array.from({length:8}).map((__,col)=>(
+          <rect key={`${row}-${col}`} x={col*60-off} y={row*17} width="58" height="15"
+            fill="none" stroke="rgba(120,100,160,0.28)" strokeWidth="0.8"/>
+        ));
+      })}
+      {/* top gold molding */}
+      <rect x="0" y="0" width="400" height="10" fill="#ffd060"/>
+      <rect x="0" y="10" width="400" height="3" fill="#c89830"/>
+      <rect x="0" y="13" width="400" height="1.5" fill="#ffe080"/>
+      {Array.from({length:25}).map((_,i)=>(
+        <rect key={i} x={i*16+2} y="1" width="12" height="8" fill="none" stroke="#a87818" strokeWidth="0.6" rx="1"/>
+      ))}
+      {/* marble floor */}
+      <rect x="0" y="185" width="400" height="95" fill="#f4e8f0"/>
+      {Array.from({length:14}).map((_,col)=>(
+        Array.from({length:4}).map((__,row)=>{
+          const light = (col+row)%2===0;
+          return <rect key={`${col}-${row}`} x={col*30} y={185+row*24} width="30" height="24"
+            fill={light?"#f8ecf4":"#e4d4dc"}/>;
+        })
+      ))}
+      <line x1="0" y1="185" x2="400" y2="185" stroke="#b09ab4" strokeWidth="1.5"/>
+      {/* red carpet */}
+      <rect x="160" y="185" width="80" height="95" fill="#a81818"/>
+      <rect x="160" y="185" width="80" height="5" fill="#d84038"/>
+      <rect x="164" y="185" width="4" height="95" fill="#ffd060"/>
+      <rect x="232" y="185" width="4" height="95" fill="#ffd060"/>
+
+      {/* giant stained-glass window */}
+      <g>
+        <path d="M 140 142 L 140 42 Q 200 12 260 42 L 260 142 Z" fill="url(#stainGlass)"/>
+        <path d="M 140 142 L 140 42 Q 200 12 260 42 L 260 142 Z" fill="none" stroke="#a8781a" strokeWidth="3.5"/>
+        <line x1="200" y1="142" x2="200" y2="14" stroke="#a8781a" strokeWidth="2"/>
+        <line x1="140" y1="92" x2="260" y2="92" stroke="#a8781a" strokeWidth="2"/>
+        <circle cx="200" cy="58" r="14" fill="#e85070" opacity="0.85">
+          <animate attributeName="opacity" values="0.55;1;0.55" dur="3s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="170" cy="112" r="10" fill="#50a8e8" opacity="0.75">
+          <animate attributeName="opacity" values="0.5;0.95;0.5" dur="2.6s" repeatCount="indefinite" begin="0.5s"/>
+        </circle>
+        <circle cx="230" cy="112" r="10" fill="#78e850" opacity="0.75">
+          <animate attributeName="opacity" values="0.5;0.95;0.5" dur="2.8s" repeatCount="indefinite" begin="1s"/>
+        </circle>
+        <circle cx="170" cy="62" r="6" fill="#ffd848" opacity="0.85"/>
+        <circle cx="230" cy="62" r="6" fill="#a848e8" opacity="0.75"/>
+      </g>
+
+      {/* gold pillars */}
+      {[32, 368].map((px,i)=>(
+        <g key={i}>
+          <rect x={px-10} y="22" width="20" height="160" fill="#e8c848"/>
+          <rect x={px-10} y="22" width="20" height="160" fill="none" stroke="#a87818" strokeWidth="1"/>
+          <rect x={px-14} y="22" width="28" height="10" fill="#c89830"/>
+          <rect x={px-14} y="172" width="28" height="10" fill="#c89830"/>
+          <rect x={px-6} y="26" width="3" height="150" fill="#ffe080" opacity="0.7"/>
+        </g>
+      ))}
+
+      {/* royal banners */}
+      {[82, 318].map((bx,i)=>(
+        <g key={i}>
+          <rect x={bx-12} y="14" width="24" height="54" fill="#a81818"/>
+          <polygon points={`${bx-12},68 ${bx},80 ${bx+12},68`} fill="#a81818"/>
+          <circle cx={bx} cy="34" r="7" fill="#ffd848"/>
+          <text x={bx} y="39" fontSize="9" fontWeight="900" textAnchor="middle" fill="#a81818">♛</text>
+        </g>
+      ))}
+
+      {/* armor stand (simplified) */}
+      <g transform="translate(370 195)">
+        <rect x="-6" y="-50" width="12" height="30" fill="#c0c8d0" stroke="#707880" strokeWidth="0.8"/>
+        <rect x="-8" y="-52" width="16" height="6" fill="#a0a8b0"/>
+        <rect x="-4" y="-20" width="8" height="18" fill="#c0c8d0"/>
+        <circle cx="0" cy="-56" r="5" fill="#c0c8d0" stroke="#707880" strokeWidth="0.8"/>
+      </g>
+
+      {/* large chandelier */}
+      <g>
+        <line x1="200" y1="14" x2="200" y2="28" stroke="#8a6820" strokeWidth="2"/>
+        <ellipse cx="200" cy="36" rx="44" ry="8" fill="none" stroke="#e8b038" strokeWidth="2"/>
+        <ellipse cx="200" cy="36" rx="32" ry="6" fill="none" stroke="#e8b038" strokeWidth="1.5"/>
+        <ellipse cx="200" cy="36" rx="18" ry="4" fill="none" stroke="#e8b038" strokeWidth="1"/>
+        {[-38,-26,-14,0,14,26,38].map((dx,i)=>(
+          <g key={i}>
+            <line x1={200+dx} y1="36" x2={200+dx} y2="48" stroke="#e8b038" strokeWidth="1"/>
+            <path d={`M ${200+dx-2} 48 L ${200+dx} 52 L ${200+dx+2} 48 Z`} fill="#ffe080"/>
+            <circle cx={200+dx} cy="44" r="3" fill="#ffd93d">
+              <animate attributeName="r" values={`${2.5};${3.8};${2.5}`} dur={`${1.4+i*0.15}s`} repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.55;1;0.55" dur={`${1.4+i*0.15}s`} repeatCount="indefinite"/>
+            </circle>
+            <circle cx={200+dx} cy="44" r="7" fill="#fff8c0" opacity="0.3">
+              <animate attributeName="opacity" values="0.15;0.5;0.15" dur={`${1.4+i*0.15}s`} repeatCount="indefinite"/>
+            </circle>
+          </g>
+        ))}
+      </g>
+
+      {/* throne */}
+      <g>
+        <rect x="184" y="160" width="32" height="50" fill="#b81838" rx="2"/>
+        <rect x="174" y="130" width="52" height="40" fill="#d8a838" rx="4"/>
+        <rect x="179" y="135" width="42" height="30" fill="#a81828"/>
+        <polygon points="174,135 200,114 226,135" fill="#e8c048"/>
+        <circle cx="200" cy="120" r="3" fill="#ffe860"/>
+        <rect x="169" y="152" width="8" height="40" fill="#c89830"/>
+        <rect x="223" y="152" width="8" height="40" fill="#c89830"/>
+        <ellipse cx="200" cy="160" rx="14" ry="3" fill="#ffd84a" opacity="0.6"/>
+      </g>
+
+      {/* huge castle cat tower (4 levels, castle-shaped) */}
+      <g>
+        <rect x="320" y="180" width="50" height="35" fill="#d0b070"/>
+        {[50, 92, 134, 176].map((y,i)=>(
+          <g key={i}>
+            <rect x="310" y={y-6} width="70" height="14" fill="#c89848" rx="3"/>
+            <rect x="314" y={y-3} width="62" height="8" fill="#e8b868" rx="3"/>
+            <polygon points={`310,${y-6} 315,${y-12} 320,${y-6}`} fill="#a87838"/>
+            <polygon points={`325,${y-6} 330,${y-12} 335,${y-6}`} fill="#a87838"/>
+            <polygon points={`340,${y-6} 345,${y-12} 350,${y-6}`} fill="#a87838"/>
+            <polygon points={`355,${y-6} 360,${y-12} 365,${y-6}`} fill="#a87838"/>
+            {i===0 && <ellipse cx="345" cy={y-8} rx="22" ry="5" fill="#d83858"/>}
+          </g>
+        ))}
+        <rect x="340" y="50" width="10" height="130" fill="#a87838"/>
+      </g>
+
+      {/* grand fireplace */}
+      <g>
+        <rect x="26" y="134" width="95" height="56" fill="#9a6848"/>
+        <rect x="22" y="128" width="103" height="10" fill="#d8a860" rx="2"/>
+        <rect x="18" y="122" width="111" height="8" fill="#b88838" rx="2"/>
+        <polygon points="22,128 125,128 115,120 32,120" fill="#c89848"/>
+        <rect x="38" y="146" width="71" height="42" fill="#180808"/>
+        <path fill="#ff6020">
+          <animate attributeName="d" dur="0.7s" repeatCount="indefinite"
+            values="M 58 186 Q 52 168 65 158 Q 72 170 80 154 Q 92 168 86 186 Z;
+                    M 56 186 Q 50 162 64 152 Q 74 168 82 150 Q 94 166 88 186 Z;
+                    M 58 186 Q 52 168 65 158 Q 72 170 80 154 Q 92 168 86 186 Z"/>
+        </path>
+        <path fill="#ffc030">
+          <animate attributeName="d" dur="0.5s" repeatCount="indefinite"
+            values="M 64 186 Q 60 172 72 164 Q 78 172 82 164 Q 86 175 80 186 Z;
+                    M 64 186 Q 58 168 72 160 Q 78 172 82 162 Q 88 175 78 186 Z;
+                    M 64 186 Q 60 172 72 164 Q 78 172 82 164 Q 86 175 80 186 Z"/>
+        </path>
+        <circle cx="74" cy="128" r="3" fill="#ffe060"/>
+      </g>
+
+      {/* fountain */}
+      <g>
+        <ellipse cx="280" cy="232" rx="28" ry="8" fill="#9abbd8"/>
+        <ellipse cx="280" cy="230" rx="24" ry="6" fill="#7aa8d0"/>
+        <rect x="276" y="204" width="8" height="28" fill="#b0c0c8"/>
+        <circle cx="280" cy="202" r="5.5" fill="#c8d8e0"/>
+        {Array.from({length:8}).map((_,i)=>{
+          const ang = (i/8)*Math.PI*2;
+          const dx = Math.cos(ang)*6;
+          return (
+            <circle key={i} cx={280+dx} cy="198" r="1.4" fill="#b8d8ec" opacity="0.8">
+              <animate attributeName="cy" values={`198;${210+Math.abs(dx)};${210+Math.abs(dx)}`} dur="1.2s" repeatCount="indefinite" begin={`${i*0.15}s`}/>
+              <animate attributeName="opacity" values="0.9;0.9;0" dur="1.2s" repeatCount="indefinite" begin={`${i*0.15}s`}/>
+            </circle>
+          );
+        })}
+        <circle cx="280" cy="198" r="5" fill="none" stroke="#c8e0ef" strokeWidth="1" opacity="0.6">
+          <animate attributeName="r" values="1;11;11" dur="1.6s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.9;0;0" dur="1.6s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+
+      {/* treasure chest */}
+      <g>
+        <rect x="88" y="216" width="50" height="28" fill="#8a5830"/>
+        <path d="M 88 216 Q 113 198 138 216" fill="#a06838" stroke="#5a3818" strokeWidth="1.2"/>
+        <rect x="110" y="223" width="6" height="8" fill="#ffd93d"/>
+        <circle cx="113" cy="227" r="1.5" fill="#5a3818"/>
+        <circle cx="105" cy="204" r="1.5" fill="#ffd93d" opacity="0.9">
+          <animate attributeName="opacity" values="0.3;1;0.3" dur="1.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="122" cy="202" r="1.2" fill="#fff" opacity="0.9">
+          <animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite" begin="0.5s"/>
+        </circle>
+        <circle cx="96" cy="210" r="1.2" fill="#ffd93d" opacity="0.85">
+          <animate attributeName="opacity" values="0.3;1;0.3" dur="2.1s" repeatCount="indefinite" begin="1s"/>
+        </circle>
+      </g>
+
+      {/* mini castle (castle inside castle) */}
+      <g transform="translate(155 216)">
+        <rect width="20" height="16" fill="#e0d0c0"/>
+        <rect x="-3" y="-4" width="5" height="6" fill="#c8b8a8"/>
+        <rect x="8" y="-4" width="4" height="6" fill="#c8b8a8"/>
+        <rect x="18" y="-4" width="5" height="6" fill="#c8b8a8"/>
+        <rect x="7" y="6" width="6" height="10" fill="#6a4030"/>
+        <circle cx="10" cy="11" r="0.7" fill="#ffd93d"/>
+      </g>
+
+      {/* sparkle particles raining */}
+      {Array.from({length:20}).map((_,i)=>{
+        const px = (i*37)%400;
+        const py = ((i*19)%180) - 20;
+        const dur = 5 + (i%4);
+        const delay = (i*0.3)%3;
+        return (
+          <text key={i} x={px} y={py} fontSize="9" fill="#ffd93d" opacity="0.7">✦
+            <animate attributeName="y" values={`${py};${py+300};${py+300}`} dur={`${dur}s`} repeatCount="indefinite" begin={`${delay}s`}/>
+            <animate attributeName="opacity" values="0;0.85;0" dur={`${dur}s`} repeatCount="indefinite" begin={`${delay}s`}/>
+          </text>
+        );
+      })}
+    </g>
+  );
+}
+
+// ===== LEVEL UP OVERLAY =====
+function LevelUpOverlay({ from, to }) {
+  return (
+    <div style={{
+      position:"fixed", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
+      pointerEvents:"none", zIndex:50,
+      background:"radial-gradient(ellipse at center, rgba(255,240,180,0.55) 0%, rgba(255,200,120,0.22) 40%, rgba(0,0,0,0) 72%)",
+      animation:"nt-lvlFade 0.25s ease",
+    }}>
+      <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>
+        {Array.from({length:28}).map((_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            left:`${(i*173)%100}%`,
+            top:"-8%",
+            fontSize: 16+((i*7)%18),
+            animation:`nt-lvlConfetti ${1.6+(i%5)*0.3}s linear forwards`,
+            animationDelay:`${(i*0.07)%1.4}s`,
+          }}>{["🎉","✨","🌟","⭐","💫","🎊","🏆"][i%7]}</div>
+        ))}
+      </div>
+      <div style={{
+        background:"linear-gradient(135deg,#fffae0,#ffd6a0)",
+        borderRadius:22,
+        padding:"22px 30px",
+        boxShadow:"0 10px 40px rgba(255,150,50,0.55), 0 0 0 4px #fff, 0 0 0 6px #ffb040",
+        textAlign:"center",
+        animation:"nt-lvlPop 0.55s cubic-bezier(.16,1.2,.2,1)",
+      }}>
+        <div style={{ fontSize:42 }}>🎉</div>
+        <div style={{ fontSize:22, fontWeight:900, color:"#c85820", marginBottom:6 }}>おうちがレベルアップ！</div>
+        <div style={{ fontSize:15, fontWeight:800, color:"#6a4828" }}>
+          {from} → <span style={{ color:"#c85820", fontSize:17 }}>{to}</span>
+        </div>
+      </div>
+      <style>{`
+        @keyframes nt-lvlFade { from{opacity:0} to{opacity:1} }
+        @keyframes nt-lvlPop {
+          0% { transform: scale(0.4); opacity: 0; }
+          70% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes nt-lvlConfetti {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ===== HOUSE VIEW =====
 function HouseView({ collection, onBack }) {
   const [, forceRender] = useState(0);
   const tickRef = useRef(0);
   const catsRef = useRef([]);
   const [timeMode, setTimeMode] = useState(getTimeMode());
+  const [levelUp, setLevelUp] = useState(null);
   const house = getHouse(collection.length);
   const nextH = HOUSES.find(h => h.need > collection.length);
+  const layout = HOUSE_LAYOUTS[house.tier];
+  const { xMin, xMax, floorTop, floorBot } = layout.bounds;
 
+  // One-shot level-up detection on mount
   useEffect(() => {
-    catsRef.current = collection.map(cat => {
-      const s = cat.id*7+13;
-      return {
-        cat,
-        x: X_MIN + 10 + (s*37 % (X_MAX-X_MIN-20)),
-        y: FLOOR_TOP + (s*53 % (FLOOR_BOT-FLOOR_TOP)),
-        vx: 0, vy: 0,
-        facing: s%2===0 ? 1 : -1,
-        action: "idle",
-        nextChangeAt: Math.floor(Math.random()*80),
-        emotion: null,
-        speech: null,
-        hearts: [],
-        jumpUntil: 0,
-        clickCount: 0,
-        lastClickAt: -9999,
-      };
+    const last = loadFromStorage("lastHouseTier", 0);
+    if (house.tier > last) {
+      const prev = HOUSES.find(h => h.tier === last);
+      if (last > 0 && prev) {
+        setLevelUp({ from: prev.name, to: house.name });
+        const t = setTimeout(() => setLevelUp(null), 2500);
+        saveToStorage("lastHouseTier", house.tier);
+        return () => clearTimeout(t);
+      }
+      saveToStorage("lastHouseTier", house.tier);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Assign cats: rarest → best perches; rest spread on floor
+  useEffect(() => {
+    const sorted = [...collection].sort((a,b)=>RARITY_RANK[b.r]-RARITY_RANK[a.r]);
+    const perches = layout.perches.slice().sort((a,b)=>b.minRarity-a.minRarity);
+    const used = new Set();
+    const placed = [];
+    for (const cat of sorted) {
+      let perched = null;
+      for (let i = 0; i < perches.length; i++) {
+        if (used.has(i)) continue;
+        if (RARITY_RANK[cat.r] >= perches[i].minRarity) {
+          used.add(i); perched = perches[i]; break;
+        }
+      }
+      placed.push({ cat, perch: perched });
+    }
+    const floorCats = placed.filter(p => !p.perch);
+    const w = Math.max(1, xMax - xMin - 20);
+    const h = Math.max(1, floorBot - floorTop);
+    floorCats.forEach((p, i) => {
+      const s = p.cat.id * 7 + 13;
+      p.x = xMin + 10 + ((s * 37 + i * 41) % w);
+      p.y = floorTop + ((s * 53 + i * 29) % h);
     });
-  }, [collection]);
+    catsRef.current = placed.map(p => ({
+      cat: p.cat,
+      x: p.perch ? p.perch.x : p.x,
+      y: p.perch ? p.perch.y : p.y,
+      vx: 0, vy: 0,
+      facing: (p.cat.id % 2 === 0) ? 1 : -1,
+      action: p.perch ? "sit" : "idle",
+      onPerch: !!p.perch,
+      nextChangeAt: Math.floor(Math.random()*80),
+      emotion: null, speech: null, hearts: [],
+      jumpUntil: 0, clickCount: 0, lastClickAt: -9999,
+    }));
+  }, [collection, house.tier, xMin, xMax, floorTop, floorBot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const iv = setInterval(() => {
       const t = ++tickRef.current;
       for (const c of catsRef.current) {
         if (t >= c.nextChangeAt) {
-          c.action = pickAction();
+          c.action = pickAction(c.onPerch);
           c.nextChangeAt = t + 50 + Math.floor(Math.random()*100);
-          if (c.action === "walk") {
-            c.vx = (Math.random()<0.5?-1:1) * 0.8;
-            c.vy = 0;
-            c.facing = c.vx > 0 ? 1 : -1;
-          } else if (c.action === "chase") {
-            const ang = Math.random()*Math.PI*2;
-            c.vx = Math.cos(ang)*2.4;
-            c.vy = Math.sin(ang)*1.1;
-            c.facing = c.vx >= 0 ? 1 : -1;
-          } else {
-            c.vx = 0; c.vy = 0;
+          if (!c.onPerch) {
+            if (c.action === "walk") {
+              c.vx = (Math.random()<0.5?-1:1) * 0.8;
+              c.vy = 0;
+              c.facing = c.vx > 0 ? 1 : -1;
+            } else if (c.action === "chase") {
+              const ang = Math.random()*Math.PI*2;
+              c.vx = Math.cos(ang)*2.4;
+              c.vy = Math.sin(ang)*1.1;
+              c.facing = c.vx >= 0 ? 1 : -1;
+            } else {
+              c.vx = 0; c.vy = 0;
+            }
           }
         }
-        if (c.action === "walk" || c.action === "chase") {
+        if (!c.onPerch && (c.action === "walk" || c.action === "chase")) {
           c.x += c.vx; c.y += c.vy;
-          if (c.x < X_MIN) { c.x = X_MIN; c.vx = -c.vx; c.facing = c.vx>=0?1:-1; }
-          if (c.x > X_MAX) { c.x = X_MAX; c.vx = -c.vx; c.facing = c.vx>=0?1:-1; }
-          if (c.y < FLOOR_TOP) { c.y = FLOOR_TOP; c.vy = -c.vy; }
-          if (c.y > FLOOR_BOT) { c.y = FLOOR_BOT; c.vy = -c.vy; }
+          if (c.x < xMin) { c.x = xMin; c.vx = -c.vx; c.facing = c.vx>=0?1:-1; }
+          if (c.x > xMax) { c.x = xMax; c.vx = -c.vx; c.facing = c.vx>=0?1:-1; }
+          if (c.y < floorTop) { c.y = floorTop; c.vy = -c.vy; }
+          if (c.y > floorBot) { c.y = floorBot; c.vy = -c.vy; }
         }
         if (!c.emotion && Math.random() < 0.004) {
           c.emotion = { icon: pickEmotion(), spawnedAt: t };
@@ -438,7 +1166,7 @@ function HouseView({ collection, onBack }) {
       forceRender(t);
     }, 100);
     return () => clearInterval(iv);
-  }, []);
+  }, [xMin, xMax, floorTop, floorBot]);
 
   useEffect(() => {
     const iv = setInterval(() => setTimeMode(getTimeMode()), 60000);
@@ -465,10 +1193,16 @@ function HouseView({ collection, onBack }) {
     forceRender(n => n + 1);
   };
 
+  const topSky = timeMode==="day" ? "#87ceeb" : timeMode==="sunset" ? "#ffa07a" : "#1a1a3a";
+  const topSky2 = timeMode==="day" ? "#b0d8f0" : timeMode==="sunset" ? "#ffc89a" : "#2a2a5a";
+  const pageLower = house.tier===1 ? "#6f665a"
+                  : house.tier===5 ? "#f8ecff" : "#FFF5E6";
+  const pageBg = `linear-gradient(180deg, ${topSky} 0%, ${topSky2} 30%, ${pageLower} 55%, ${pageLower} 100%)`;
+
   return(
-    <div style={{ minHeight:"100vh",
-      background:`linear-gradient(180deg,${timeMode==="day"?"#87ceeb":timeMode==="sunset"?"#ffa07a":"#1a1a3a"} 0%,${timeMode==="day"?"#b0d8f0":timeMode==="sunset"?"#ffc89a":"#2a2a5a"} 40%,${house.bg} 40%)`,
-      fontFamily:"'Zen Maru Gothic',sans-serif", animation:"fadeIn 0.3s ease", transition:"background 2s ease" }}>
+    <div style={{ minHeight:"100vh", background: pageBg,
+      fontFamily:"'Zen Maru Gothic',sans-serif", animation:"fadeIn 0.3s ease", transition:"background 2s ease",
+      position:"relative", overflow:"hidden" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", gap:10 }}>
         <button className="nt-btn nt-btn-sub" onClick={onBack}>← もどる</button>
         <div style={{ fontSize:20, fontWeight:900, color:timeMode==="night"?"#fff":T.textMain }}>🏠 {house.name}</div>
@@ -481,9 +1215,9 @@ function HouseView({ collection, onBack }) {
           あと{nextH.need-collection.length}ひきで「{nextH.name}」にグレードアップ！
         </div>
       </div>}
-      <div style={{ width:"100%", maxWidth:480, margin:"0 auto", padding:"0 10px" }}>
-        <svg viewBox="0 0 300 200" style={{ width:"100%", borderRadius:16, background:house.bg,
-          boxShadow:"0 6px 24px rgba(0,0,0,0.18)", touchAction:"manipulation" }}>
+      <div style={{ width:"100%", maxWidth:560, margin:"0 auto", padding:"0 10px" }}>
+        <svg viewBox="0 0 400 280" style={{ width:"100%", borderRadius:16,
+          boxShadow:"0 6px 24px rgba(0,0,0,0.18)", touchAction:"manipulation", display:"block" }}>
           <defs>
             <linearGradient id="skyDay" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#87ceeb"/><stop offset="100%" stopColor="#c8e8f8"/>
@@ -494,49 +1228,28 @@ function HouseView({ collection, onBack }) {
             <linearGradient id="skyNight" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#0a0a2a"/><stop offset="100%" stopColor="#2a2a5a"/>
             </linearGradient>
+            <linearGradient id="royalWall" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f0e0f8"/><stop offset="100%" stopColor="#fff0d8"/>
+            </linearGradient>
+            <linearGradient id="stainGlass" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#a0d0f0"/>
+              <stop offset="50%" stopColor="#f0c8e8"/>
+              <stop offset="100%" stopColor="#f8e0a0"/>
+            </linearGradient>
           </defs>
-          <rect x="0" y="130" width="300" height="70" fill={house.fl}/>
-          <line x1="0" y1="130" x2="300" y2="130" stroke="rgba(0,0,0,0.1)" strokeWidth="1"/>
-          {house.items.includes("rug")&&<ellipse cx="150" cy="165" rx="60" ry="15" fill="rgba(180,60,60,0.3)"/>}
-          {house.items.includes("shelf")&&<><rect x="10" y="40" width="40" height="6" fill="#a0784a" rx="2"/><rect x="10" y="60" width="40" height="6" fill="#a0784a" rx="2"/><rect x="8" y="36" width="3" height="34" fill="#8a6840"/><rect x="49" y="36" width="3" height="34" fill="#8a6840"/></>}
-          {house.items.includes("plant")&&<><rect x="260" y="105" width="16" height="25" fill="#b07040" rx="2"/><circle cx="268" cy="98" r="12" fill="#5a9a4a"/><circle cx="262" cy="92" r="8" fill="#6aaa5a"/></>}
-          {house.items.includes("tower")&&<><rect x="240" y="50" width="20" height="80" fill="#c4a06a" rx="3"/><rect x="235" y="50" width="30" height="8" fill="#d4b07a" rx="4"/><rect x="235" y="80" width="30" height="8" fill="#d4b07a" rx="4"/><rect x="235" y="110" width="30" height="8" fill="#d4b07a" rx="4"/></>}
-          {house.items.includes("sofa")&&<><rect x="60" y="100" width="50" height="20" fill="#c06060" rx="5"/><rect x="55" y="95" width="10" height="30" fill="#b05050" rx="4"/><rect x="105" y="95" width="10" height="30" fill="#b05050" rx="4"/><rect x="60" y="90" width="50" height="12" fill="#d07070" rx="5"/></>}
-          {house.items.includes("chandelier")&&<><line x1="150" y1="0" x2="150" y2="20" stroke="#c8a020" strokeWidth="1"/><ellipse cx="150" cy="25" rx="20" ry="8" fill="none" stroke="#d4b030" strokeWidth="1.5"/><circle cx="135" cy="28" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/></circle><circle cx="150" cy="30" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="165" cy="28" r="2" fill="#ffd93d" opacity="0.8"><animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/></circle></>}
-          {house.items.includes("fountain")&&<><ellipse cx="150" cy="170" rx="25" ry="8" fill="#80c0e0" opacity="0.5"/><rect x="146" y="150" width="8" height="20" fill="#a0a0a0" rx="2"/><circle cx="150" cy="148" r="5" fill="#90b8d8" opacity="0.6"><animate attributeName="r" values="3;6;3" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/></circle></>}
-          <rect x="125" y="20" width="50" height="40"
-            fill={timeMode==="day"?"url(#skyDay)":timeMode==="sunset"?"url(#skySunset)":"url(#skyNight)"}
-            stroke="#a0784a" strokeWidth="3" rx="2"/>
-          {timeMode==="day" && <>
-            <circle cx="160" cy="32" r="4" fill="#ffd93d"/>
-            <circle cx="160" cy="32" r="6" fill="#ffd93d" opacity="0.3"/>
-            <ellipse cx="138" cy="36" rx="6" ry="2" fill="#fff" opacity="0.8"/>
-            <ellipse cx="165" cy="48" rx="5" ry="1.8" fill="#fff" opacity="0.7"/>
-          </>}
-          {timeMode==="sunset" && <>
-            <circle cx="150" cy="52" r="6" fill="#ffe0a0" opacity="0.95"/>
-            <ellipse cx="150" cy="56" rx="20" ry="3" fill="#ffb070" opacity="0.4"/>
-            <ellipse cx="135" cy="40" rx="7" ry="2" fill="#ffcc99" opacity="0.7"/>
-          </>}
-          {timeMode==="night" && <>
-            <circle cx="162" cy="30" r="4" fill="#fffacd"/>
-            <circle cx="160" cy="29" r="3" fill="#2a2a5a"/>
-            <circle cx="132" cy="28" r="0.6" fill="#fff"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.1s" repeatCount="indefinite"/></circle>
-            <circle cx="142" cy="38" r="0.5" fill="#fff"><animate attributeName="opacity" values="0.4;1;0.4" dur="1.7s" repeatCount="indefinite"/></circle>
-            <circle cx="138" cy="50" r="0.6" fill="#fff"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="2.5s" repeatCount="indefinite"/></circle>
-            <circle cx="170" cy="50" r="0.5" fill="#fff"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.9s" repeatCount="indefinite"/></circle>
-            <circle cx="148" cy="26" r="0.4" fill="#fff"><animate attributeName="opacity" values="0.5;1;0.5" dur="2.3s" repeatCount="indefinite"/></circle>
-          </>}
-          <line x1="150" y1="20" x2="150" y2="60" stroke="#a0784a" strokeWidth="2"/>
-          <line x1="125" y1="40" x2="175" y2="40" stroke="#a0784a" strokeWidth="2"/>
+          {house.tier===1 && <HouseTier1 timeMode={timeMode}/>}
+          {house.tier===2 && <HouseTier2 timeMode={timeMode}/>}
+          {house.tier===3 && <HouseTier3 timeMode={timeMode}/>}
+          {house.tier===4 && <HouseTier4 timeMode={timeMode}/>}
+          {house.tier===5 && <HouseTier5 timeMode={timeMode}/>}
           {catsRef.current.map(state => (
             <MiniCat key={state.cat.id} state={state} tick={tickRef.current}
               onClick={() => handleCatClick(state)}/>
           ))}
-          {collection.length===0&&<text x="150" y="110" textAnchor="middle" fontSize="12" fill="#999" fontWeight="700">まだねこがいないよ… ガチャでむかえよう！</text>}
+          {collection.length===0&&<text x="200" y="150" textAnchor="middle" fontSize="14" fill="#333" fontWeight="700">まだねこがいないよ… ガチャでむかえよう！</text>}
         </svg>
       </div>
-      <div style={{ maxWidth:480, margin:"14px auto 0", padding:"0 12px" }}>
+      <div style={{ maxWidth:560, margin:"14px auto 0", padding:"0 12px" }}>
         <div style={{ fontSize:13, color:T.textSub, textAlign:"center", marginBottom:8, fontWeight:700 }}>
           💡 ねこをタップするとリアクション！3かいタップでハート💕
         </div>
@@ -556,6 +1269,7 @@ function HouseView({ collection, onBack }) {
         </div>
       </div>
       <div style={{ height:24 }}/>
+      {levelUp && <LevelUpOverlay from={levelUp.from} to={levelUp.to}/>}
     </div>
   );
 }
