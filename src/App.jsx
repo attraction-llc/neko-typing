@@ -165,6 +165,92 @@ const HOUSES = [
 ];
 function getHouse(n){ let h=HOUSES[0]; for(const x of HOUSES){if(n>=x.need)h=x;} return h; }
 
+// ===== SOUND (Web Audio API) =====
+function useSound(enabled) {
+  const ctxRef = useRef(null);
+  const enabledRef = useRef(enabled);
+  useEffect(() => { enabledRef.current = enabled; }, [enabled]);
+
+  return useMemo(() => {
+    const getCtx = () => {
+      if (!enabledRef.current) return null;
+      if (!ctxRef.current) {
+        try {
+          const Ctor = window.AudioContext || window.webkitAudioContext;
+          if (!Ctor) return null;
+          ctxRef.current = new Ctor();
+        } catch { return null; }
+      }
+      if (ctxRef.current.state === "suspended") {
+        try { ctxRef.current.resume(); } catch {}
+      }
+      return ctxRef.current;
+    };
+
+    const playTone = (freq, duration, type, volume, delay = 0) => {
+      const ctx = getCtx();
+      if (!ctx) return;
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0002), t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    };
+
+    const playSequence = (notes, type, volume) => {
+      let t = 0;
+      for (const [freq, dur] of notes) {
+        playTone(freq, dur, type, volume, t);
+        t += dur;
+      }
+    };
+
+    const playSweep = (f1, f2, duration, type, volume) => {
+      const ctx = getCtx();
+      if (!ctx) return;
+      const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(f1, t0);
+      osc.frequency.exponentialRampToValueAtTime(f2, t0 + duration);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0002), t0 + 0.05);
+      gain.gain.setValueAtTime(volume, t0 + Math.max(duration - 0.1, 0.05));
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    };
+
+    return {
+      playType:  () => playTone(800, 0.05, "sine", 0.15),
+      playClear: () => playSequence([[523, 0.1], [659, 0.1]], "sine", 0.25),
+      playMiss:  () => playTone(200, 0.1, "square", 0.12),
+      playGachaDrum:  () => playSweep(100, 600, 1.5, "triangle", 0.2),
+      playGachaResult: (rarity) => {
+        const stars = (rarity || "").length;
+        if (stars <= 2) {
+          playSequence([[523, 0.08], [659, 0.08], [784, 0.12]], "sine", 0.25);
+        } else if (stars === 3) {
+          playSequence([[523, 0.1], [659, 0.1], [784, 0.1], [1047, 0.2]], "sine", 0.3);
+        } else {
+          const vol = stars >= 5 ? 0.4 : 0.3;
+          playSequence([[523, 0.15], [659, 0.15], [784, 0.15], [1047, 0.15], [1319, 0.3]], "sine", vol);
+        }
+      },
+      playCombo: () => playSequence([[400, 0.05], [800, 0.05], [1200, 0.1]], "sine", 0.25),
+      playClick: () => playTone(600, 0.03, "sine", 0.1),
+    };
+  }, []);
+}
+
 // ===== THEME =====
 const T = {
   bg:"#FFF8F0", card:"#FFFFFF",
@@ -475,14 +561,21 @@ function HouseView({ collection, onBack }) {
 }
 
 // ===== GACHA MODAL =====
-function GachaModal({ cat, isNew, onClose }) {
+function GachaModal({ cat, isNew, onClose, sound }) {
   const [phase, setPhase] = useState(0);
   const rarity = RARITY[cat.r];
   const isUltra = cat.r === "★★★★★";
   const isSuper = cat.r === "★★★★";
   const revealDelay = isUltra ? 3500 : isSuper ? 2500 : 1500;
 
-  useEffect(()=>{const t=setTimeout(()=>setPhase(1),revealDelay);return()=>clearTimeout(t);},[revealDelay]);
+  useEffect(()=>{
+    sound?.playGachaDrum?.();
+    const t=setTimeout(()=>{
+      setPhase(1);
+      sound?.playGachaResult?.(cat.r);
+    },revealDelay);
+    return()=>clearTimeout(t);
+  },[revealDelay, sound, cat.r]);
 
   const starCount = isUltra ? 18 : isSuper ? 10 : 0;
   const stars = useMemo(() => Array.from({length:starCount}, (_,i) => ({
@@ -627,6 +720,8 @@ export default function NekoTyping() {
   const [flashData,setFlashData]=useState({xp:0,combo:0});
   const [gachaCat,setGachaCat]=useState(null);
   const [gachaNew,setGachaNew]=useState(false);
+  const [soundOn,setSoundOn]=useState(()=>loadFromStorage("soundOn",true));
+  const sound = useSound(soundOn);
 
   useEffect(()=>saveToStorage("level",level),[level]);
   useEffect(()=>saveToStorage("xp",xp),[xp]);
@@ -634,6 +729,7 @@ export default function NekoTyping() {
   useEffect(()=>saveToStorage("collection",collection),[collection]);
   useEffect(()=>saveToStorage("correct",correct),[correct]);
   useEffect(()=>saveToStorage("miss",miss),[miss]);
+  useEffect(()=>saveToStorage("soundOn",soundOn),[soundOn]);
 
   const resetData=()=>{
     if(!confirm("ほんとうにリセットしますか？\nあつめたねこがぜんぶきえてしまいます！"))return;
@@ -658,14 +754,23 @@ export default function NekoTyping() {
       const nw=typed+k;setTyped(nw);setCorrect(c=>c+1);
       setCombo(c=>c+1);
       setFlashKey(k);setTimeout(()=>setFlashKey(f=>f===k?null:f),180);
+      const newCombo = combo + 1;
       if(nw===word.roma){
         const bx=level*5+(combo>=5?5:0);
         setXp(x=>x+bx);setTotalXp(t=>t+bx);
-        setFlashData({xp:bx,combo:combo+1});setFlashId(f=>f+1);
+        setFlashData({xp:bx,combo:newCombo});setFlashId(f=>f+1);
+        sound.playClear();
         setTimeout(()=>{setWord(nextWord());setTyped("")},400);
+      } else if (newCombo > 0 && newCombo % 5 === 0) {
+        sound.playCombo();
+      } else {
+        sound.playType();
       }
-    }else{setMiss(m=>m+1);setCombo(0);setShakeKey(nx);setTimeout(()=>setShakeKey(null),300);}
-  },[screen,gachaCat,word,typed,combo,level,nextWord]);
+    }else{
+      setMiss(m=>m+1);setCombo(0);setShakeKey(nx);setTimeout(()=>setShakeKey(null),300);
+      sound.playMiss();
+    }
+  },[screen,gachaCat,word,typed,combo,level,nextWord,sound]);
 
   useEffect(()=>{window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[onKey]);
 
@@ -869,7 +974,7 @@ export default function NekoTyping() {
                     </div>
                     <div style={{fontSize:22,fontWeight:900,color:T.textMain,
                       fontFamily:"monospace",margin:"6px 0 4px",letterSpacing:1}}>
-                      {LEVEL_SAMPLES[lv]}
+                      {LEVEL_SAMPLES[lv].toUpperCase()}
                     </div>
                     <div style={{fontSize:12,fontWeight:700,color:T.textSub,lineHeight:1.3}}>
                       {data.label}
@@ -898,9 +1003,16 @@ export default function NekoTyping() {
             🏆 そうXP: <b style={{color:T.textMain,fontSize:16}}>{totalXp}</b>
           </div>
 
-          <button className="nt-btn-danger" onClick={resetData} style={{marginTop:20,fontFamily:"inherit",border:"none",borderRadius:12,cursor:"pointer"}}>
-            🗑️ データをリセット
-          </button>
+          <div style={{display:"flex",gap:10,marginTop:20,flexWrap:"wrap",justifyContent:"center"}}>
+            <button className="nt-btn-danger"
+              onClick={()=>{const next=!soundOn;setSoundOn(next);if(next){setTimeout(()=>sound.playClick(),0);}}}
+              style={{fontFamily:"inherit",border:"none",borderRadius:12,cursor:"pointer"}}>
+              {soundOn ? "🔊 おとあり" : "🔇 おとなし"}
+            </button>
+            <button className="nt-btn-danger" onClick={resetData} style={{fontFamily:"inherit",border:"none",borderRadius:12,cursor:"pointer"}}>
+              🗑️ データをリセット
+            </button>
+          </div>
         </div>
       )}
 
@@ -991,7 +1103,7 @@ export default function NekoTyping() {
                       textDecorationColor: T.primary,
                       display: "inline-block",
                       animation: isCur ? "charBounce 0.8s ease-in-out infinite" : "none",
-                    }}>{ch}</span>
+                    }}>{ch.toUpperCase()}</span>
                   );
                 })}
               </div>
@@ -1079,7 +1191,7 @@ export default function NekoTyping() {
                                : "none",
                       transform: isT ? "scale(1.08)" : "scale(1)",
                       transition: "background 0.1s, color 0.1s, transform 0.1s",
-                    }}>{key}</div>
+                    }}>{key.toUpperCase()}</div>
                   );
                 })}
               </div>
@@ -1185,7 +1297,8 @@ export default function NekoTyping() {
       {screen==="house"&&<HouseView collection={collection} onBack={()=>setScreen("title")}/>}
 
       {/* GACHA */}
-      {gachaCat&&<GachaModal cat={gachaCat} isNew={gachaNew} onClose={()=>setGachaCat(null)}/>}
+      {gachaCat&&<GachaModal cat={gachaCat} isNew={gachaNew} sound={sound}
+        onClose={()=>{sound.playClick();setGachaCat(null);}}/>}
     </div>
   );
 }
