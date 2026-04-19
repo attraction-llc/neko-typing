@@ -126,33 +126,94 @@ const CATS = [
   { id:100, name:"ねこがみさま", r:"★★★★★", c:"#f0e8d0", d:"すべてのねこのかみさま", ec:"#ffd93d", p:"solid", s:"god" },
 ].map(c => ({ ...c, img: `${import.meta.env.BASE_URL}cats/${c.id.toString().padStart(3, "0")}.png` }));
 
+const KANA = {
+  "あ":["a"],"い":["i"],"う":["u"],"え":["e"],"お":["o"],
+  "か":["ka"],"き":["ki"],"く":["ku"],"け":["ke"],"こ":["ko"],
+  "が":["ga"],"ぎ":["gi"],"ぐ":["gu"],"げ":["ge"],"ご":["go"],
+  "さ":["sa"],"し":["shi","si"],"す":["su"],"せ":["se"],"そ":["so"],
+  "ざ":["za"],"じ":["ji","zi"],"ず":["zu"],"ぜ":["ze"],"ぞ":["zo"],
+  "た":["ta"],"ち":["chi","ti"],"つ":["tsu","tu"],"て":["te"],"と":["to"],
+  "だ":["da"],"ぢ":["di"],"づ":["du"],"で":["de"],"ど":["do"],
+  "な":["na"],"に":["ni"],"ぬ":["nu"],"ね":["ne"],"の":["no"],
+  "は":["ha"],"ひ":["hi"],"ふ":["fu","hu"],"へ":["he"],"ほ":["ho"],
+  "ば":["ba"],"び":["bi"],"ぶ":["bu"],"べ":["be"],"ぼ":["bo"],
+  "ぱ":["pa"],"ぴ":["pi"],"ぷ":["pu"],"ぺ":["pe"],"ぽ":["po"],
+  "ま":["ma"],"み":["mi"],"む":["mu"],"め":["me"],"も":["mo"],
+  "や":["ya"],"ゆ":["yu"],"よ":["yo"],
+  "ら":["ra"],"り":["ri"],"る":["ru"],"れ":["re"],"ろ":["ro"],
+  "わ":["wa"],"を":["wo","o"],"ん":["nn","n"],
+  "しゃ":["sha","sya"],"しゅ":["shu","syu"],"しょ":["sho","syo"],
+  "ちゃ":["cha","tya","chya"],"ちゅ":["chu","tyu","chyu"],"ちょ":["cho","tyo","chyo"],
+  "じゃ":["ja","zya","jya"],"じゅ":["ju","zyu","jyu"],"じょ":["jo","zyo","jyo"],
+};
+
+const buildChars = (hira) => {
+  const out = [];
+  let i = 0;
+  while (i < hira.length) {
+    if (hira[i] === "っ") {
+      const two = hira.substring(i+1, i+3);
+      const hasYoon = KANA[two] !== undefined;
+      const nextKana = hasYoon ? two : hira[i+1];
+      const skip = hasYoon ? 3 : 2;
+      const nextOpts = KANA[nextKana] || [""];
+      out.push({ hira: "っ"+nextKana, options: nextOpts.map(o => o[0] + o) });
+      i += skip;
+      continue;
+    }
+    const two = hira.substring(i, i+2);
+    if (KANA[two]) { out.push({ hira: two, options: KANA[two] }); i += 2; continue; }
+    const one = hira[i];
+    if (KANA[one]) out.push({ hira: one, options: KANA[one] });
+    i++;
+  }
+  return out;
+};
+
+const mkWord = (hira) => {
+  const chars = buildChars(hira);
+  return { roma: chars.map(c => c.options[0]).join(""), hira, chars };
+};
+
 const WORDS = {
-  1: { label:"かんたん（1もじ）", words:"asdfjklghtyrueiwoqpbnmcxzv".split("").map(c=>({roma:c,hira:""})) },
+  1: { label:"かんたん（1もじ）", words:"asdfjklghtyrueiwoqpbnmcxzv".split("").map(c=>({roma:c,hira:"",chars:[{hira:"",options:[c]}]})) },
   2: { label:"ふつう（2〜3もじ）", words:[
-    ["ai","あい"],["ue","うえ"],["ao","あお"],
-    ["ka","か"],["ki","き"],["ku","く"],["ke","け"],["ko","こ"],
-    ["sa","さ"],["si","し"],["su","す"],["se","せ"],["so","そ"],
-    ["ta","た"],["ti","ち"],["tu","つ"],["te","て"],["to","と"],
-    ["na","な"],["ni","に"],["nu","ぬ"],["ne","ね"],["no","の"],
-    ["ha","は"],["hi","ひ"],["hu","ふ"],["he","へ"],["ho","ほ"],
-    ["ma","ま"],["mi","み"],["mu","む"],["me","め"],["mo","も"],
-    ["ya","や"],["yu","ゆ"],["yo","よ"],
-    ["ra","ら"],["ri","り"],["ru","る"],["re","れ"],["ro","ろ"],
-    ["wa","わ"],["wo","を"],["nn","ん"]
-  ].map(([roma,hira])=>({roma,hira})) },
+    "あい","うえ","あお",
+    "か","き","く","け","こ",
+    "さ","し","す","せ","そ",
+    "た","ち","つ","て","と",
+    "な","に","ぬ","ね","の",
+    "は","ひ","ふ","へ","ほ",
+    "ま","み","む","め","も",
+    "や","ゆ","よ",
+    "ら","り","る","れ","ろ",
+    "わ","を","ん"
+  ].map(mkWord) },
   3: { label:"ちょいむず（たんご）", words:[
-    ["neko","ねこ"],["inu","いぬ"],["sora","そら"],["umi","うみ"],["yama","やま"],
-    ["kawa","かわ"],["hana","はな"],["mori","もり"],["kaze","かぜ"],["ame","あめ"],
-    ["yuki","ゆき"],["hosi","ほし"],["tuki","つき"],["kumo","くも"],["niwa","にわ"],
-    ["mado","まど"],["isu","いす"],["mizu","みず"],["ie","いえ"],["eki","えき"],
-    ["mura","むら"],["mati","まち"],["kuni","くに"],["sato","さと"],["tori","とり"]
-  ].map(([roma,hira])=>({roma,hira})) },
+    "ねこ","いぬ","そら","うみ","やま",
+    "かわ","はな","もり","かぜ","あめ",
+    "ゆき","ほし","つき","くも","にわ",
+    "まど","いす","みず","いえ","えき",
+    "むら","まち","くに","さと","とり"
+  ].map(mkWord) },
   4: { label:"むずかしい（ながいたんご）", words:[
-    ["sakura","さくら"],["kodomo","こども"],["tomodati","ともだち"],["gakkou","がっこう"],["sensee","せんせい"],
-    ["ohayou","おはよう"],["arigato","ありがと"],["konnitiwa","こんにちは"],["nekosuki","ねこすき"],["sugoiyo","すごいよ"],
-    ["tanosii","たのしい"],["uresii","うれしい"],["ganbaru","がんばる"],["okaasan","おかあさん"],["otoosan","おとうさん"],
-    ["oneesan","おねえさん"],["oniisan","おにいさん"],["purezento","プレゼント"],["keeki","ケーキ"],["oyasumi","おやすみ"]
-  ].map(([roma,hira])=>({roma,hira})) },
+    ...[
+      "さくら","こども","ともだち","がっこう","せんせい",
+      "おはよう","ありがと","ねこすき","すごいよ",
+      "たのしい","うれしい","がんばる","おかあさん","おとおさん",
+      "おねえさん","おにいさん","ぷれぜんと","けえき","おやすみ"
+    ].map(mkWord),
+    {
+      roma:"konnichiwa", hira:"こんにちは",
+      chars:[
+        {hira:"こ",options:["ko"]},
+        {hira:"ん",options:["nn","n"]},
+        {hira:"に",options:["ni"]},
+        {hira:"ち",options:["chi","ti"]},
+        {hira:"は",options:["wa"]},
+      ]
+    }
+  ] },
 };
 const KB = [["q","w","e","r","t","y","u","i","o","p"],["a","s","d","f","g","h","j","k","l"],["z","x","c","v","b","n","m"]];
 const GACHA_COST = 50;
@@ -1424,7 +1485,9 @@ export default function NekoTyping() {
   const [totalXp,setTotalXp]=useState(()=>loadFromStorage("totalXp",0));
   const [collection,setCollection]=useState(()=>loadFromStorage("collection",[]));
   const [word,setWord]=useState(null);
-  const [typed,setTyped]=useState("");
+  const [charIndex,setCharIndex]=useState(0);
+  const [charTyped,setCharTyped]=useState("");
+  const [committed,setCommitted]=useState([]);
   const [combo,setCombo]=useState(0);
   const [correct,setCorrect]=useState(()=>loadFromStorage("correct",0));
   const [miss,setMiss]=useState(()=>loadFromStorage("miss",0));
@@ -1452,39 +1515,86 @@ export default function NekoTyping() {
   };
 
   const nextWord=useCallback(()=>{const w=WORDS[level].words;return w[Math.floor(Math.random()*w.length)];},[level]);
-  useEffect(()=>{if(screen==="game"&&!word){setWord(nextWord());setTyped("");}},[screen,word,nextWord]);
+  const loadNextWord=useCallback(()=>{setWord(nextWord());setCharIndex(0);setCharTyped("");setCommitted([]);},[nextWord]);
+  useEffect(()=>{if(screen==="game"&&!word)loadNextWord();},[screen,word,loadNextWord]);
 
   const onKey=useCallback((e)=>{
     if(gachaCat)return;
     if(screen==="game"&&e.key==="Escape"){e.preventDefault();setScreen("title");return;}
     if(screen!=="game")return;
-    if(e.key===" "){e.preventDefault();setCombo(0);setWord(nextWord());setTyped("");return;}
+    if(e.key===" "){e.preventDefault();setCombo(0);loadNextWord();return;}
     const k=e.key.toLowerCase();
     if(k.length!==1||e.ctrlKey||e.metaKey||e.altKey)return;
     e.preventDefault();
     if(!word)return;
-    const nx=word.roma[typed.length];
-    if(k===nx){
-      const nw=typed+k;setTyped(nw);setCorrect(c=>c+1);
+    const cur=word.chars[charIndex];
+    if(!cur)return;
+
+    let success=false;
+    let nextCharIndex=charIndex;
+    let nextCharTyped=charTyped;
+    let nextCommitted=committed;
+    let wordDone=false;
+
+    const combined=charTyped+k;
+    const prefixMatch=cur.options.some(o=>o.startsWith(combined));
+    if(prefixMatch){
+      nextCharTyped=combined;
+      const exact=cur.options.find(o=>o===combined);
+      if(exact){
+        nextCommitted=[...committed,exact];
+        nextCharIndex=charIndex+1;
+        nextCharTyped="";
+        if(nextCharIndex>=word.chars.length)wordDone=true;
+      }
+      success=true;
+    }else{
+      const exactSoFar=cur.options.find(o=>o===charTyped);
+      if(exactSoFar&&charIndex+1<word.chars.length){
+        const nx=word.chars[charIndex+1];
+        if(nx.options.some(o=>o.startsWith(k))){
+          nextCommitted=[...committed,exactSoFar];
+          nextCharIndex=charIndex+1;
+          nextCharTyped=k;
+          const nxExact=nx.options.find(o=>o===k);
+          if(nxExact){
+            nextCommitted=[...nextCommitted,nxExact];
+            nextCharIndex=charIndex+2;
+            nextCharTyped="";
+            if(nextCharIndex>=word.chars.length)wordDone=true;
+          }
+          success=true;
+        }
+      }
+    }
+
+    if(success){
+      setCharIndex(nextCharIndex);
+      setCharTyped(nextCharTyped);
+      setCommitted(nextCommitted);
+      setCorrect(c=>c+1);
       setCombo(c=>c+1);
       setFlashKey(k);setTimeout(()=>setFlashKey(f=>f===k?null:f),180);
-      const newCombo = combo + 1;
-      if(nw===word.roma){
+      const newCombo=combo+1;
+      if(wordDone){
         const bx=level*5+(combo>=5?5:0);
         setXp(x=>x+bx);setTotalXp(t=>t+bx);
         setFlashData({xp:bx,combo:newCombo});setFlashId(f=>f+1);
         sound.playClear();
-        setTimeout(()=>{setWord(nextWord());setTyped("")},400);
-      } else if (newCombo > 0 && newCombo % 5 === 0) {
+        setTimeout(()=>{loadNextWord();},400);
+      }else if(newCombo>0&&newCombo%5===0){
         sound.playCombo();
-      } else {
+      }else{
         sound.playType();
       }
     }else{
-      setMiss(m=>m+1);setCombo(0);setShakeKey(nx);setTimeout(()=>setShakeKey(null),300);
+      setMiss(m=>m+1);setCombo(0);
+      const expectOpt=cur.options.find(o=>o.startsWith(charTyped))||cur.options[0];
+      const expectKey=expectOpt[charTyped.length];
+      setShakeKey(expectKey);setTimeout(()=>setShakeKey(null),300);
       sound.playMiss();
     }
-  },[screen,gachaCat,word,typed,combo,level,nextWord,sound]);
+  },[screen,gachaCat,word,charIndex,charTyped,committed,combo,level,loadNextWord,sound]);
 
   useEffect(()=>{window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[onKey]);
 
@@ -1700,7 +1810,7 @@ export default function NekoTyping() {
           </div>
 
           <button className="nt-btn nt-btn-primary" style={{padding:"16px 44px",fontSize:20,minWidth:220}}
-            onClick={()=>{setWord(null);setTyped("");setCombo(0);setCorrect(0);setMiss(0);setScreen("game");}}>
+            onClick={()=>{setWord(null);setCharIndex(0);setCharTyped("");setCommitted([]);setCombo(0);setCorrect(0);setMiss(0);setScreen("game");}}>
             ▶ はじめる
           </button>
 
@@ -1804,21 +1914,28 @@ export default function NekoTyping() {
                 letterSpacing:level===1?0:8,display:"flex",
                 justifyContent:"center",alignItems:"center",gap:level===1?0:4,
                 fontFamily:"monospace",lineHeight:1.1,minHeight:wordCharSize*1.15}}>
-                {word && word.roma.split("").map((ch,i)=>{
-                  const isDone = i<typed.length;
-                  const isCur = i===typed.length;
-                  return(
-                    <span key={i} style={{
-                      color: isDone ? T.success : isCur ? T.primary : "#D0D0D0",
-                      fontWeight: isDone ? 900 : isCur ? 900 : 700,
-                      textDecoration: isCur ? "underline" : "none",
-                      textDecorationThickness: 4,
-                      textUnderlineOffset: 8,
-                      textDecorationColor: T.primary,
-                      display: "inline-block",
-                      animation: isCur ? "charBounce 0.8s ease-in-out infinite" : "none",
-                    }}>{ch.toUpperCase()}</span>
-                  );
+                {word && word.chars.flatMap((c,ci)=>{
+                  const opt = ci<charIndex
+                    ? (committed[ci]||c.options[0])
+                    : ci===charIndex
+                      ? (c.options.find(o=>o.startsWith(charTyped))||c.options[0])
+                      : c.options[0];
+                  return opt.split("").map((ch,li)=>{
+                    const isDone = ci<charIndex || (ci===charIndex && li<charTyped.length);
+                    const isCur = ci===charIndex && li===charTyped.length;
+                    return(
+                      <span key={`${ci}-${li}`} style={{
+                        color: isDone ? T.success : isCur ? T.primary : "#D0D0D0",
+                        fontWeight: isDone ? 900 : isCur ? 900 : 700,
+                        textDecoration: isCur ? "underline" : "none",
+                        textDecorationThickness: 4,
+                        textUnderlineOffset: 8,
+                        textDecorationColor: T.primary,
+                        display: "inline-block",
+                        animation: isCur ? "charBounce 0.8s ease-in-out infinite" : "none",
+                      }}>{ch.toUpperCase()}</span>
+                    );
+                  });
                 })}
               </div>
             </div>
@@ -1885,7 +2002,10 @@ export default function NekoTyping() {
               <div key={ri} style={{display:"flex",justifyContent:"center",gap:6,
                 marginBottom:ri<2?6:0,paddingLeft:ri===1?20:ri===2?40:0}}>
                 {row.map(key=>{
-                  const isT = word && word.roma[typed.length]===key;
+                  const cur = word && word.chars[charIndex];
+                  const nextOpt = cur ? (cur.options.find(o=>o.startsWith(charTyped))||cur.options[0]) : "";
+                  const nextKey = nextOpt ? nextOpt[charTyped.length] : null;
+                  const isT = nextKey===key;
                   const isS = shakeKey===key;
                   const isF = flashKey===key;
                   const bg = isS ? T.error : isF ? T.success : isT ? T.primary : T.keyBg;
