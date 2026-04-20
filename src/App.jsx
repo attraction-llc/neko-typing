@@ -1747,6 +1747,23 @@ export default function NekoTyping() {
           display:"flex",flexDirection:"column",alignItems:"center",
           animation:"fadeIn 0.3s"}}>
 
+          <div style={{
+            background:"linear-gradient(135deg,#FFF5E6,#FFE4CC)",
+            border:`2px solid ${T.primary}55`,
+            borderRadius:999,
+            padding:"6px 16px",
+            fontSize:12,fontWeight:800,
+            color:T.primaryDark,
+            letterSpacing:0.5,
+            boxShadow:"0 3px 10px rgba(255,140,66,0.18)",
+            marginBottom:10,
+            animation:"float 4s ease-in-out infinite",
+            display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:14}}>🐾</span>
+            <span>合同会社あとらくしょん <span style={{color:T.textSub}}>ていきょう</span></span>
+            <span style={{fontSize:14}}>🐾</span>
+          </div>
+
           <div style={{animation:"float 3s ease-in-out infinite",marginBottom:4}}>
             <CatFace cat={CATS[0]} size={96}/>
           </div>
